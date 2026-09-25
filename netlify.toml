@@ -1,0 +1,10 @@
+# Netlify rebuilds the shareable prototype (all pages, noindex) on every push.
+[build]
+  command = "python3 _build.py --share"
+  publish = "_share/site"
+
+# a prototype must never compete with shineguards.com in search
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
