@@ -1003,38 +1003,63 @@ function servicesSec(title, sub, ids, kind) {
   return sec('services', title, sub, `<div class="services feat">${feat.map((id, i) => cardHTML(kind, id, i, true)).join('')}</div>`
     + (rest.length ? `<h3 class="more-h">${kind === 'private' ? 'Інші послуги' : 'Ще для бізнесу'}</h3><div class="svc-minis">${rest.map((id, i) => miniCardHTML(kind, id, i)).join('')}</div>` : ''), badge);
 }
-// What's included: a package switch plus every room at once — included ✓, added by this package +.
-// Fits on one screen; switching the package shows the difference (pattern: room checklists with a
-// depth toggle, as on handy.com / greenplanetcleaningservices.com)
-const PKG_SCN = { basic: 'Регулярне підтримання чистоти', general: 'Повноцінне прибирання квартири', deep: 'Максимальна деталізація: техніка, шафи, наліт' };
+// What's included: three plan cards share one 3×3 grid of zones — row 1 is the base, row 2 is what General adds,
+// row 3 what Deep adds — so the difference shows at a glance (aligned rows, as on apple.com/iphone/compare;
+// icons instead of lists). The full room-by-room checklist opens on demand.
+const PKG_SCN = { basic: 'Регулярне підтримання чистоти', general: 'Повноцінне прибирання квартири', deep: 'Максимальна деталізація' };
 const PKG_GIFTS = { general: ['1 година прасування'], deep: ['1 година прасування', '1 година хімчистки меблів'] };
+// [icon, label, first package it is in, label from the deep package on, gift]
+const PLAN_ZONES = [
+  ['sofa', 'Кімнати', 'basic'], ['oven', 'Кухня', 'basic'], ['bath', 'Ванна й туалет', 'basic'],
+  ['window', 'Вікна зсередини', 'general', 'Вікна з обох боків'], ['fridge', 'Духовка й холодильник', 'general'], ['iron', 'Прасування', 'general', null, true],
+  ['hanger', 'Шафи й техніка всередині', 'deep'], ['spray', 'Жир і вапняний наліт', 'deep'], ['armchair', 'Хімчистка меблів', 'deep', null, true],
+];
+const pkgTasks = (k) => ROOMS.reduce((a, rm) => a + rm.tasks.filter(([n, l]) => !n.startsWith('🎁') && TIER_RANK[l] <= TIER_RANK[k]).length, 0);
 function compareSec() {
-  const k = TIER_RANK[state.cmpK] != null ? state.cmpK : TIER_RANK[state.type] != null ? state.type : 'basic', cp = cityPrices();
-  const lv = (x) => TIER_RANK[x], tasks = (rm) => rm.tasks.filter(([n]) => !n.startsWith('🎁'));
-  const count = (t) => ROOMS.reduce((a, rm) => a + tasks(rm).filter(([, l]) => lv(l) <= lv(t)).length, 0), all = count('deep');
-  const tab = (t) => `<button type="button" role="tab" class="pkg-tab" data-cmp="${t}" aria-selected="${t === k}" tabindex="${t === k ? 0 : -1}">
-      ${t === 'deep' ? '<span class="pkg-badge">Максимальне очищення</span>' : ''}<b>${TYPES[t].name}</b><span class="pkg-from">від ${eur(cp[t][0])}</span>
-      <span class="pkg-meter" aria-hidden="true"><i style="width:${Math.round(count(t) / all * 100)}%"></i></span><small>${count(t)} ${tasksWord(count(t))}${(PKG_GIFTS[t] || []).map((g) => `<i class="pkg-gi" title="${g} у подарунок">${GIFT_SVG}</i>`).join('')}</small></button>`;
-  // a room lists what this package does there; the rest is one quiet line (switch the package to see it)
-  const room = (rm) => {
-    const list = tasks(rm), inc = list.filter(([, l]) => lv(l) <= lv(k)), out = list.filter(([, l]) => lv(l) > lv(k));
-    const where = [...new Set(out.map(([, l]) => l))].map((l) => l === 'general' ? 'генеральному' : 'глибокому').join(' й ');
-    return `<div class="pkg-room"><h4>${ic(rm.icon)}${rm.name}<small>${inc.length} з ${list.length}</small></h4><ul>${inc.map(([t, l]) => `<li class="${l === k && k !== 'basic' ? 'new' : 'in'}">${t}</li>`).join('')}${out.length ? `<li class="more">${inc.length ? `Ще ${out.length} ${tasksWord(out.length)}` : 'Усе це'} — у ${where}</li>` : ''}</ul></div>`;
+  const t = TIER_RANK[state.type] != null ? state.type : 'basic', cp = cityPrices(), lv = (x) => TIER_RANK[x];
+  const tile = ([icn, label, from, deepLabel, gift], k) => {
+    const on = lv(from) <= lv(k), up = !!deepLabel && k === 'deep', isNew = on && ((from === k && k !== 'basic') || up);
+    const cls = !on ? 'off' : gift ? 'gift' : isNew ? 'new' : 'on';
+    const badge = !on ? '' : gift ? GIFT_SVG : isNew ? '+' : '✓';
+    return `<li class="zt ${cls}">${ic(icn)}<span>${up ? deepLabel : label}${gift ? `<small>${on ? '1 год у подарунок' : 'подарунок'}</small>` : ''}<span class="vh">${on ? ' — входить' : ' — не входить'}</span></span>${badge ? `<i class="zb" aria-hidden="true">${badge}</i>` : ''}</li>`;
   };
-  const gifts = (PKG_GIFTS[k] || []).map((g) => `<span class="gift">${GIFT_SVG}${g} у подарунок</span>`).join('');
-  const body = `<div class="pkg"><div class="pkg-tabs" role="tablist" aria-label="Пакети прибирання">${['basic', 'general', 'deep'].map(tab).join('')}</div>
-    <div class="pkg-panel" role="tabpanel" aria-label="${TYPES[k].full}">
-      <div class="pkg-head"><div class="pkg-t"><h3>${TYPES[k].full}</h3><p>${PKG_SCN[k]} · <b>${count(k)} з ${all}</b> завдань</p></div>${gifts ? `<div class="pkg-gifts">${gifts}</div>` : ''}
-        <button type="button" class="pkg-go" data-pick="${k}">${k === state.type ? 'Розрахувати ціну' : 'Обрати ' + TYPES[k].name.toLowerCase()} →</button></div>
-      <div class="pkg-rooms">${ROOMS.map(room).join('')}</div>
-      ${k !== 'basic' ? '<p class="pkg-leg"><span><i class="in">✓</i>як у попередньому пакеті</span><span><i class="new">+</i>нове в цьому пакеті</span></p>' : ''}</div></div>`;
+  const card = (k) => `<article class="plan ${k === t ? 'cur' : ''}">
+      ${k === 'deep' ? '<span class="plan-badge">Максимальне очищення</span>' : ''}
+      <div class="plan-row"><h3>${TYPES[k].name}</h3><span class="plan-price">від <b>${eur(cp[k][0])}</b></span></div><p class="plan-scn">${PKG_SCN[k]}</p>
+      <ul class="zones">${PLAN_ZONES.map((z) => tile(z, k)).join('')}</ul>
+      <button type="button" class="plan-more" data-cklist="${k}">Повний чек-лист · ${pkgTasks(k)} ${tasksWord(pkgTasks(k))} →</button>
+      <button type="button" class="plan-go" data-pick="${k}">${k === t ? '✓ Обрано' : 'Обрати ' + TYPES[k].name.toLowerCase()}</button>
+    </article>`;
+  const body = `<div class="plans">${['basic', 'general', 'deep'].map(card).join('')}</div>
+    <p class="plans-leg"><span><i class="zb">✓</i>входить</span><span><i class="zb new">+</i>додається в цьому пакеті</span><span><i class="zb gift">${GIFT_SVG}</i>подарунок</span><span><i class="zb off"></i>у старших пакетах</span></p>`;
   const own = PAGE === 'service' && PAGE_SVC && PAGE_SVC.incl === 'tier';
-  return sec('compare', own ? `Що входить у ${PAGE_SVC.name.charAt(0).toLowerCase() + PAGE_SVC.name.slice(1)}` : 'Що входить у кожен пакет', 'Оберіть пакет — і подивіться, що саме зробимо в кожній кімнаті.', body);
+  return sec('compare', own ? `Що входить у ${PAGE_SVC.name.charAt(0).toLowerCase() + PAGE_SVC.name.slice(1)}` : 'Що входить у кожен пакет', 'Кожен наступний пакет — усе з попереднього плюс нові зони.', body);
 }
-function refreshCompare(focus) {
+// the chosen package's card comes into view on phones, where the cards swipe
+function showCurPlan() {
+  const row = $('.plans'), cur = row && row.querySelector('.plan.cur');
+  if (cur && row.scrollWidth > row.clientWidth) row.scrollLeft = cur.offsetLeft - row.offsetLeft - 16;
+}
+function refreshCompare() {
   const cmp = $('#compare'); if (!cmp) return;
   cmp.outerHTML = compareSec().replace('class="sec-head reveal"', 'class="sec-head reveal in"');
-  if (focus) { const t = $('#compare [aria-selected="true"]'); if (t) t.focus(); }
+  showCurPlan();
+}
+// full checklist of one package, room by room — for those who want every detail
+function openChecklist(k) {
+  closeMenus();
+  const lv = (x) => TIER_RANK[x], n = pkgTasks(k);
+  const rooms = ROOMS.map((rm) => {
+    const inc = rm.tasks.filter(([x, l]) => !x.startsWith('🎁') && lv(l) <= lv(k));
+    return inc.length ? `<div class="ck-room"><h4>${ic(rm.icon)}${rm.name}</h4><ul>${inc.map(([x, l]) => `<li class="${l === k && k !== 'basic' ? 'new' : ''}">${x}</li>`).join('')}</ul></div>` : '';
+  }).join('');
+  const gifts = (PKG_GIFTS[k] || []).map((g) => `<span class="gift">${GIFT_SVG}${g} у подарунок</span>`).join('');
+  const m = $('#modal');
+  m.classList.add('wide');
+  m.innerHTML = `<div class="ck-head"><div><h3 id="mTitle">${TYPES[k].full}</h3><p class="muted">Повний чек-лист · ${n} ${tasksWord(n)}${k !== 'basic' ? ' · синім — те, що додається в цьому пакеті' : ''}</p></div><button class="x" type="button" data-close aria-label="Закрити">×</button></div>
+    ${gifts ? `<div class="ck-gifts">${gifts}</div>` : ''}<div class="ck-rooms">${rooms}</div>
+    <button class="cta" type="button" data-pick="${k}">Обрати ${TYPES[k].name.toLowerCase()} — від ${eur(cityPrices()[k][0])}</button>`;
+  m.classList.add('on'); $('#scrim').classList.add('on');
 }
 function objectsSec() {
   const also = [['windows', 'Миття вікон'], ['reno', 'Прибирання після ремонту'], ['general', 'Генеральне прибирання'], ['deep', 'Глибоке прибирання'], ['moveout', 'Переїзд офісу'], ['extras', 'Додаткові послуги']];
@@ -1687,6 +1712,7 @@ function wireDynamic() {
   const hero = $('#top');
   if (fab && hero && 'IntersectionObserver' in window) new IntersectionObserver(([en]) => fab.classList.toggle('show', !en.isIntersecting)).observe(hero);
   else if (fab) fab.classList.add('show');
+  showCurPlan();
   const tr = $('#revTrack');
   if (tr) {
     tr.addEventListener('scroll', revCenter, { passive: true });
@@ -1799,7 +1825,7 @@ function openDrawer(group) {
   $('#drawer').classList.add('on'); $('#scrim').classList.add('on');
   if (group) setTimeout(() => { const g = $(`#drBody [data-g="${group}"]`); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 320);
 }
-function openModal() { closeMenus(); renderModal(); $('#modal').classList.add('on'); $('#scrim').classList.add('on'); }
+function openModal() { closeMenus(); $('#modal').classList.remove('wide'); renderModal(); $('#modal').classList.add('on'); $('#scrim').classList.add('on'); }
 function closeAll() { ['#drawer', '#modal', '#scrim'].forEach((s) => { const el = $(s); if (el) el.classList.remove('on'); }); }
 function closeMenus() { const lm = $('#langMenu'), lb = $('#langBtn'); if (lm) lm.classList.remove('on'); if (lb) lb.setAttribute('aria-expanded', 'false'); const m = $('#mega'), n = $('#mnav'); if (m) m.classList.remove('on'); if (n) n.classList.remove('on'); const sb = $('#svcBtn'); if (sb) sb.setAttribute('aria-expanded', 'false'); const bg = $('#burger'); if (bg) bg.setAttribute('aria-expanded', 'false'); }
 const toCalc = () => $('#top').scrollIntoView({ behavior: 'smooth' });
@@ -1823,7 +1849,7 @@ function setType(t) {
   if (t === 'general' || t === 'moveout') state.win.sides = 1;
   if (!PLAN_UP[t] || !PLAN_UP[t].includes(state.planUp)) state.planUp = null;
   renderCalc();
-  if (TIER_RANK[t] != null) { state.cmpK = t; refreshCompare(); }
+  if (TIER_RANK[t] != null) refreshCompare();
 }
 function setSqm(v, fromRange) {
   v = Math.max(15, Math.min(999, Math.round(+v || 15)));
@@ -1940,8 +1966,8 @@ document.addEventListener('click', (e) => {
   }
   if (d.open === 'drawer') return openDrawer(state.type === 'chem' ? 'uph' : null);
   if (d.open === 'book') { if (b.id === 'ctaMain') state.touched = true; /* the price was on screen — book exactly that */ track(b.id === 'ctaMain' ? 'calc_cta' : b.id === 'fab' ? 'fab_click' : 'book_click', { type: P() ? state.type : state.biz.obj, price: headline(compute()) || '' }); bizGoal = d.bizgoal || null; if (d.bizgoal && P()) { state.mode = 'business'; } return openModal(); }
-  if (d.cmp) { state.cmpK = d.cmp; refreshCompare(true); return; }
-  if (d.pick) { setType(d.pick); toCalc(); return; }
+  if (d.cklist) { openChecklist(d.cklist); return; }
+  if (d.pick) { closeAll(); setType(d.pick); toCalc(); return; }
   if (d.faqcat != null) { state.faqCat = +d.faqcat; renderFaq(); return; }
   if (d.promo) {
     if (d.promo === 'regular') {
@@ -1999,15 +2025,7 @@ document.addEventListener('click', (e) => {
   if ($('#drawer').classList.contains('on')) renderDrawer();
   renderCalc();
 });
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { closeAll(); closeMenus(); }
-  // package tabs: arrows move between them
-  const t = e.target;
-  if (t.dataset && t.dataset.cmp && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
-    const ks = ['basic', 'general', 'deep'], i = ks.indexOf(t.dataset.cmp);
-    e.preventDefault(); state.cmpK = ks[(i + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; refreshCompare(true);
-  }
-});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAll(); closeMenus(); } });
 
 /* ═════════ INIT ═════════ */
 applyPreset((PAGE_SVC || PAGE_OBJ || {}).calc);
