@@ -4,6 +4,7 @@
 Every shell carries the SEO head (title, description, canonical, hreflang,
 Open Graph) and <meta name="sg"> that assets/site.js reads to render the page.
 URLs mirror production: /{city}/ua/services/{private|business}/{slug}-in-{city}/
+and /{city}/ua/locations/{slug}-in-{city}/ for business objects
 
 Run:  python _build.py           → page shells next to this script (dev, _serve.py)
       python _build.py --share   → _share/shineguards-prototype.html (the whole site
@@ -53,6 +54,23 @@ BUSINESS = {
     'reno':    'pribirannya-pislya-remontu',
 }
 
+# Business objects — own pages, as on shineguards.com: /{city}/ua/locations/{slug}-in-{city}
+OBJECTS = {
+    #               slug                                          title (city follows)                description ({loc} = у Відні…)
+    'hotels':      ('goteli-apartamenti-ta-airbnb',              'Прибирання готелів і Airbnb',      'Прибирання готелів, апартаментів та Airbnb у {loc}: свіжа білизна, поповнення розхідників, фотозвіт після кожного гостя. Ціна за виїзд, знижка до 10% від 5 обʼєктів.'),
+    'offices':     ('ofisi-ta-kovorkingi',                       'Прибирання офісів і коворкінгів',  'Прибирання офісів і коворкінгів у {loc}: до або після робочого дня, закріплена команда, договір і документи. Пропозиція за 24 години.'),
+    'shops':       ('magazini-butiki-ta-shourumi',               'Прибирання магазинів і шоурумів',  'Прибирання магазинів, бутиків і шоурумів у {loc}: вітрини, дзеркала, торговий зал і примірочні — до відкриття або після закриття.'),
+    'restaurants': ('restorani-kafe-ta-bari',                    'Прибирання ресторанів і кафе',     'Прибирання ресторанів, кафе та барів у {loc}: зали, бар, тераса й санвузли, кухня за стандартами HACCP. Пропозиція за 24 години.'),
+    'kitchens':    ('profesijni-kuhni-ta-gastronomiya',          'Прибирання професійних кухонь',    'Прибирання професійних кухонь у {loc} за HACCP: жир і нагар з плит, печей і витяжок, лише засоби для харчових зон.'),
+    'gyms':        ('fitnes-czentri-ta-sportzali',               'Прибирання фітнес-центрів',        'Прибирання фітнес-центрів і спортзалів у {loc}: дезінфекція тренажерів, роздягальні й душові — вночі або рано вранці.'),
+    'medical':     ('medichni-czentri-kliniki-ta-stomatologiyi', 'Прибирання клінік і стоматологій', 'Прибирання медичних центрів, клінік і стоматологій у {loc}: кабінети, зони очікування й санвузли за санітарними нормами. Ціна після огляду.'),
+    'cars':        ('avtosaloni-ta-servisni-czentri',            'Прибирання автосалонів і СТО',     'Прибирання автосалонів і сервісних центрів у {loc}: шоурум, скло, зона очікування й технічні зони СТО.'),
+    'bizcenters':  ('biznes-czentri',                            'Прибирання бізнес-центрів',        'Прибирання бізнес-центрів у {loc}: холи, ліфти, сходи, санвузли й паркінг за графіком будівлі, повна відповідальність за договором.'),
+    'cinemas':     ('kinoteatri-teatri-ta-rozvazhalni-zoni',     'Прибирання кінотеатрів і театрів', 'Прибирання кінотеатрів, театрів і розважальних зон у {loc}: зали між сеансами, фоє, каси, гардероби й фудкорти.'),
+    'beauty':      ('saloni-krasi-spa-ta-barbershopi',           'Прибирання салонів краси та SPA',  'Прибирання салонів краси, SPA та барбершопів у {loc}: робочі місця майстрів, кушетки, SPA-зони й дезінфекція поверхонь.'),
+    'malls':       ('torgovi-czentri',                           'Прибирання торгових центрів',      'Прибирання торгових центрів у {loc}: галереї, атріуми, фудкорти й ескалатори, зокрема нічні зміни.'),
+}
+
 
 def fmt(n):
     return str(n).replace('.', ',')
@@ -66,7 +84,7 @@ def private_seo(svc, city):
         'general': (f'Генеральне прибирання {name} | Shine Guards',
                     f'Генеральне прибирання у {loc} від {fg} €: вікна зсередини, духовка й холодильник, 1 година прасування у подарунок. Фіксована ціна за площею, розрахунок онлайн.'),
         'deep': (f'Глибоке прибирання {name} | Shine Guards',
-                 f'Глибоке прибирання у {loc} від {fd} €: шафи й техніка всередині, вікна з обох боків, жир і накип. У подарунок — прасування та хімчистка меблів.'),
+                 f'Глибоке прибирання у {loc} від {fd} €: шафи й техніка всередині, вікна з обох боків, жир і накип. Два подарунки: година прасування і година хімчистки меблів.'),
         'extras': (f'Додаткові клінінгові послуги у {loc} | Shine Guards',
                    f'Прасування, шафи, духовка, балкон, хімчистка дивана й матраца у {loc}. Додайте до прибирання або замовте окремо — від {EXTRA_HOUR[city]} € за годину.'),
         'windows': (f'Миття вікон {name} | Shine Guards',
@@ -103,6 +121,12 @@ def business_seo(svc, city):
         'reno': (f'Прибирання після ремонту для бізнесу {name} | Shine Guards',
                  f'Прибирання після ремонту офісів і комерційних приміщень у {loc}: пил з великих площ, вентиляція, освітлення, скляні перегородки.'),
     }[svc]
+
+
+def object_seo(obj, city):
+    name, loc, _, _ = CITIES[city]
+    _, title, desc = OBJECTS[obj]
+    return (f'{title} {name} | Shine Guards', desc.format(loc=loc))
 
 
 def home_seo(city):
@@ -180,6 +204,8 @@ def page_list():
             out.append((f'{city}/ua/services/private/{slug}-in-{city}', dict(seo=private_seo(svc, city), page='service', kind='private', svc=svc, city=city)))
         for svc, slug in BUSINESS.items():
             out.append((f'{city}/ua/services/business/{slug}-in-{city}', dict(seo=business_seo(svc, city), page='service', kind='business', svc=svc, city=city)))
+        for obj, (slug, _, _) in OBJECTS.items():
+            out.append((f'{city}/ua/locations/{slug}-in-{city}', dict(seo=object_seo(obj, city), page='object', kind='business', svc=obj, city=city)))
     for name, seo in GLOBAL.items():
         out.append((f'ua/{name}', dict(seo=seo, page=name)))
     return out
