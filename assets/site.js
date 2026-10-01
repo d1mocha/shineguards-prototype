@@ -852,7 +852,7 @@ function renderCalc() {
   box.innerHTML = `
     <div class="calc-head"><h2>${CALC_B ? (P() ? 'Розрахуйте вартість' : 'Орієнтовний розрахунок для бізнесу') : P() ? 'Розрахуйте вартість прибирання' : 'Розрахуйте вартість для бізнесу'}</h2>
       <label class="city-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B63E5" stroke-width="2.4"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><select data-city aria-label="Місто">${cityOptions()}</select></label></div>
-    <nav class="seg ${CALC_B ? 'seg2' : ''}" aria-label="Тип клієнта"><a href="${modeHref('private')}" data-mode="private" aria-current="${P()}">${ICON_HOME}Для дому</a><a href="${modeHref('business')}" data-mode="business" aria-current="${!P()}">${ICON_BIZ}Для бізнесу</a></nav>
+    ${CALC_B ? '' : `<nav class="seg" aria-label="Тип клієнта"><a href="${modeHref('private')}" data-mode="private" aria-current="${P()}">${ICON_HOME}Для дому</a><a href="${modeHref('business')}" data-mode="business" aria-current="${!P()}">${ICON_BIZ}Для бізнесу</a></nav>`}
     <div id="calcIn">${P() ? (CALC_B ? privInputsB() : privInputs()) : (CALC_B ? bizInputsB() : bizInputs())}</div>
     <div id="calcOut">${calcOutHTML()}</div>`;
   renderLive(); updateFab();
@@ -876,7 +876,8 @@ function tween(el, from, to) {
 function updateFab(c = compute()) {
   const hl = headline(c), fab = $('#fabPrice'); if (!fab) return;
   fab.hidden = !hl; fab.textContent = hl || '';
-  $('#fabLbl').textContent = PAGE === 'partnership' ? 'Стати партнером' : P() ? 'Забронювати' : 'Отримати пропозицію';
+  const lbl = PAGE === 'partnership' ? 'Стати партнером' : P() ? 'Забронювати' : 'Отримати пропозицію';
+  $('#fabLbl').textContent = lbl; $('#fab').setAttribute('aria-label', lbl + (hl ? ' · ' + hl : '')); $('#fab').title = lbl;
   if (P() && $('#drTotal')) $('#drTotal').textContent = c.total ? (c.approx ? '≈ ' : '') + eur(c.total) : '—';
 }
 function renderLive() {
@@ -950,14 +951,15 @@ function heroHTML(o) {
   return `<section class="hero" id="top"><div class="container">
     <div class="hero-text">${crumbs}${o.eyebrow ? `<span class="eyebrow pop"><i>${P() ? ICON_HOME : ICON_BIZ}</i>${o.eyebrow}</span>` : ''}
       <h1 class="pop" style="--i:1">${o.kicker ? `<span class="h1-kicker">${o.kicker}</span>` : ''}${o.h1}</h1>
-      <p class="lead pop" style="--i:2">${o.lead}</p>${facts}${trust}${team}${o.extra || ''}</div>
+      <p class="lead pop" style="--i:2">${o.lead}</p>${facts}${trust}${team}${o.stats ? `<div class="hero-stats pop" style="--i:6">${statsHTML(o.stats)}</div>` : ''}${o.extra || ''}</div>
     ${o.side ? `<div class="hero-side">${o.side}</div>` : `<div class="calc-wrap"><div class="calc" id="calc" ${o.partner ? 'data-kind="partner"' : ''}>${o.partner || ''}</div></div>`}
   </div></section>`;
 }
 const TRUST_P = [
-  ['<path d="M17 6.5A7 7 0 1 0 17 17.5M4 10h9M4 14h9"/>', 'Фіксована ціна — без доплат після прибирання'],
-  ['<path d="M20 6 9 17l-5-5"/>', 'Оплата після прибирання — крім прибирання при виїзді'],
-  ['<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', 'Застрахована відповідальність за пошкодження'],
+  ['<path d="M17 6.5A7 7 0 1 0 17 17.5M4 10h9M4 14h9"/>', 'Фіксована ціна без доплат'],
+  ['<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>', 'Перевірена команда'],
+  ['<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', 'Швидке бронювання'],
+  ['<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>', 'Контроль якості, прибирання за чек-листом'],
 ];
 const TRUST_B = [
   ['<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>', 'Офіційний договір і повний пакет документів'],
@@ -973,7 +975,7 @@ function trustFor(kind, id) {
   const t = TRUST_P.slice();
   if (id === 'windows') t[0] = [t[0][0], 'Орієнтовна ціна одразу — точну підтвердимо за фото'];
   if (id === 'reno') t[0] = [t[0][0], 'Оплата за фактичний час — суму назвемо за фото'];
-  if (id === 'moveout') t[1] = [t[1][0], 'Фіксована ціна за площею · передоплата'];
+  if (id === 'moveout') t[0] = [t[0][0], 'Фіксована ціна за площею · передоплата'];
   return t;
 }
 function cardHTML(kind, id, i, featured) {
@@ -1006,7 +1008,7 @@ function servicesSec(title, sub, ids, kind) {
 // What's included: three plan cards share one 3×3 grid of zones — row 1 is the base, row 2 is what General adds,
 // row 3 what Deep adds — so the difference shows at a glance (aligned rows, as on apple.com/iphone/compare;
 // icons instead of lists). The full room-by-room checklist opens on demand.
-const PKG_SCN = { basic: 'Регулярне підтримання чистоти', general: 'Повноцінне прибирання квартири', deep: 'Максимальна деталізація' };
+const PKG_SCN = { basic: 'Для регулярного підтримання чистоти', general: 'Якщо давно не прибирали', deep: 'Максимально детальне очищення всіх зон вашої оселі, щоб вона виглядала як нова' };
 const PKG_GIFTS = { general: ['1 година прасування'], deep: ['1 година прасування', '1 година хімчистки меблів'] };
 // [icon, label, first package it is in, label from the deep package on, gift]
 const PLAN_ZONES = [
@@ -1033,7 +1035,7 @@ function compareSec() {
   const body = `<div class="plans">${['basic', 'general', 'deep'].map(card).join('')}</div>
     <p class="plans-leg"><span><i class="zb">✓</i>входить</span><span><i class="zb new">+</i>додається в цьому пакеті</span><span><i class="zb gift">${GIFT_SVG}</i>подарунок</span><span><i class="zb off"></i>у старших пакетах</span></p>`;
   const own = PAGE === 'service' && PAGE_SVC && PAGE_SVC.incl === 'tier';
-  return sec('compare', own ? `Що входить у ${PAGE_SVC.name.charAt(0).toLowerCase() + PAGE_SVC.name.slice(1)}` : 'Що входить у кожен пакет', 'Кожен наступний пакет — усе з попереднього плюс нові зони.', body);
+  return sec('compare', own ? `Що входить у ${PAGE_SVC.name.charAt(0).toLowerCase() + PAGE_SVC.name.slice(1)}` : 'Порівняйте пакети прибирання', 'Кожен наступний пакет — усе з попереднього плюс нові зони.', body);
 }
 // the chosen package's card comes into view on phones, where the cards swipe
 function showCurPlan() {
@@ -1493,8 +1495,8 @@ function pageHome() {
   if (P()) {
     // price → proof → choice → booking
     return heroHTML({ eyebrow: 'Your trusted cleaning service', h1: `Прибирання квартир і будинків <span class="accent">у ${c.loc}${SPARK}</span>`,
-      lead: 'Оберіть тип прибирання та площу — і одразу побачите фіксовану ціну. Разово або регулярно, без очікування дзвінка менеджера.', trust: TRUST_P })
-      + statsStripSec() + compareSec() + moreServicesSec() + reviewsSec() + aboutSec(null, { noStats: true }) + stepsSec() + homePromos() + faqSec() + contactsSec();
+      lead: 'Оберіть тип прибирання та площу — і одразу побачите фіксовану ціну. Разово або регулярно, без очікування дзвінка менеджера.', trust: TRUST_P, stats: STATS_PRIVATE })
+      + reviewsSec() + compareSec() + moreServicesSec() + aboutSec(null, { noStats: true }) + stepsSec() + homePromos() + faqSec() + contactsSec();
   }
   return heroHTML({ kicker: `Комерційний клінінг у ${c.loc}`, h1: 'Беремо чистоту вашого бізнесу <span class="accent">під контроль</span>',
     lead: 'Регулярне прибирання, контроль якості, персональний менеджер і повний пакет документів — під ваш графік та вимоги.', trust: trustBiz() })
@@ -1503,9 +1505,9 @@ function pageHome() {
 function pageList() {
   const c = CITIES[state.city];
   return heroHTML({ crumbs: [['Головна', homeHref('private')], ['Послуги для дому']], eyebrow: 'Послуги для фізичних осіб', h1: `Послуги прибирання для дому <span class="accent">у ${c.loc}</span>`,
-    lead: 'Вдома хочеться відпочивати, а не прибирати. Беремо це на себе — від регулярного прибирання до складних випадків після ремонту чи переїзду.', trust: TRUST_P })
+    lead: 'Вдома хочеться відпочивати, а не прибирати. Беремо це на себе — від регулярного прибирання до складних випадків після ремонту чи переїзду.', trust: TRUST_P, stats: STATS_PRIVATE })
     + servicesSec('Усі послуги для дому', `Ціни для міста ${c.name}.`, SVC_ORDER.private, 'private')
-    + compareSec() + reviewsSec() + homePromos() + faqSec() + contactsSec();
+    + reviewsSec() + compareSec() + homePromos() + faqSec() + contactsSec();
 }
 function pageService() {
   const s = PAGE_SVC, kind = state.mode, c = CITIES[state.city];
