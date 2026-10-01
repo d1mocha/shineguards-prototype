@@ -1411,3 +1411,14 @@ a.objcard:hover .obj-ic { color: var(--orange); }
   .fab .ico { background: none; }
 }
 @media (min-width: 701px) and (max-width: 1365px) { .fab { width: 50px; height: 50px; right: 6px; } }
+
+/* ═════════ Round 10 ═════════ */
+.biz-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink2); background: #F4F7FB; border-radius: 10px; padding: 8px 10px; }
+.term-badge { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border-radius: 999px; padding: 3px 10px; }
+/* five client logos in one calm row */
+.logo-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 26px; }
+.logo-row .logo-tile { width: auto; height: 100px; }
+@media (max-width: 700px) {
+  .logo-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+  .logo-row .logo-tile { flex: 0 0 calc(50% - 5px); height: 84px; }
+}
