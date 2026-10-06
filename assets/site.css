@@ -1422,3 +1422,98 @@ a.objcard:hover .obj-ic { color: var(--orange); }
   .logo-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
   .logo-row .logo-tile { flex: 0 0 calc(50% - 5px); height: 84px; }
 }
+
+/* ═════════ Round 11: package pages (basic / general / deep) ═════════ */
+/* first screen on phones: heading → lead → gifts → facts → calculator (the facts used to jump above the heading) */
+@media (max-width: 980px) {
+  .hero-text > .hero-gifts { order: 4; margin: -6px 0 16px; }
+  .hero-text > .kf { order: 4; margin: 0 0 22px; }
+}
+/* gifts: one quiet label and a chip per gift — in the first screen, the calculator and the package cards */
+.gifts-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gr-l { display: inline-flex; align-items: center; gap: 6px; margin-right: 2px; font-size: 12.5px; font-weight: 700; color: #9A4A00; white-space: nowrap; }
+.gr-l svg { width: 15px; height: 15px; flex: none; }
+.gr-c { font-size: 12.5px; font-weight: 600; line-height: 1.3; color: #7A3E00; background: #FFF4E5; border-radius: 12px; padding: 4px 10px; }
+.gifts-row.p-gifts { margin-top: 10px; }
+.gifts-row.hero-gifts { margin-top: 16px; }
+.hero-gifts .gr-l, .hero-gifts .gr-c { font-size: 13.5px; }
+.hero-gifts .gr-c { background: #fff; color: var(--ink2); padding: 5px 12px; box-shadow: 0 2px 8px rgba(2,16,36,.06); }
+/* "what is in this package": a few zone cards with concrete actions */
+.incl-grid.tz { margin-top: 26px; }
+.incl-grid.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.incl-grid.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tz .incl-card { padding: 20px; }
+.tz .incl-card li.new { font-weight: 600; }
+.tz .incl-card li.new .ck { font-size: 13px; }
+.tz-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-top: 18px; }
+.tz-foot .btn-ghost { flex: none; }
+.tz-note { flex: 1 1 340px; max-width: 760px; margin: 0; font-size: 14px; color: var(--muted); }
+@media (max-width: 1000px) { .incl-grid.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .incl-grid.c3, .incl-grid.c4 { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+  .tz .incl-card { padding: 16px; }
+  .tz-foot .btn-ghost { width: 100%; justify-content: center; }
+}
+/* when to choose the package */
+.principles.when .pr h3 { font-size: 16.5px; line-height: 1.25; }
+.when-note { margin: 16px 0 0; font-size: 14.5px; color: var(--ink2); }
+.when-note a { color: var(--blue); font-weight: 600; }
+@media (max-width: 600px) {
+  .principles.when { grid-template-columns: 1fr; }
+  .principles.when .pr { display: grid; grid-template-columns: 44px 1fr; column-gap: 12px; align-items: start; }
+  .principles.when .pr .oi { grid-row: span 2; width: 44px; height: 44px; }
+  .principles.when .pr h3 { margin: 0 0 4px; }
+}
+/* package cards: the shared base in one tile, then the four works that tell the packages apart */
+.zones { grid-template-columns: 1fr 1fr; margin-top: 18px; }
+.zt { min-height: 104px; }
+.zt small { color: var(--muted); font-weight: 600; }
+.zt.off { color: var(--muted); }
+.zt.off small { color: var(--muted); }
+.zt.base { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px; min-height: 0; padding: 12px 38px 12px 12px; text-align: left; font-size: 13.5px; }
+.zt-ics { display: flex; flex: none; }
+.zt.base .oi { width: 30px; height: 30px; }
+.zt.base b { display: block; font-weight: 700; }
+.zt.base small { margin-top: 2px; font-size: 12px; font-weight: 500; }
+.zt.base .zb { top: 50%; right: 10px; transform: translateY(-50%); }
+.plan-x { display: flex; align-items: flex-start; min-height: 28px; margin: 12px 0 14px; }
+.plan-x .gifts-row { gap: 5px; }
+.px-reg { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #0A3F91; background: var(--blue-soft); border-radius: 12px; padding: 5px 11px; }
+.px-reg svg { width: 15px; height: 15px; flex: none; }
+.plan-more { margin-top: auto; }
+/* how to choose — the formula under the cards */
+.plans-pick { display: flex; gap: 8px 28px; margin-top: 18px; background: #fff; border: 1px solid #E3EAF3; border-radius: 20px; padding: 16px 22px; font-size: 14.5px; line-height: 1.45; color: var(--ink2); }
+.plans-pick > b { flex: none; font: 800 15px/1.45 Montserrat, sans-serif; color: var(--ink); }
+.plans-pick p { flex: 1 1 0; margin: 0; }
+.plans-pick p b { color: var(--ink); }
+@media (max-width: 900px) { .plans-pick { flex-direction: column; padding: 14px 16px; } }
+/* closing call, upsell link, more questions */
+button.fc-btn { border: 0; cursor: pointer; }
+.fc-btn.biz svg { color: var(--wa); }
+a.pbtn { display: inline-flex; align-items: center; text-decoration: none; }
+a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
+.ck-note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+/* the booking button keeps one line on phones: the price is right above it */
+.cta { text-wrap: balance; }
+@media (max-width: 480px) { .cta .cta-pr { display: none; } }
+@media (max-width: 980px) { .hero-text > .gifts-row.hero-gifts { margin: -8px 0 16px; } }
+/* the rows of the three cards line up (heading, line, tiles, gifts, buttons) whatever the length of the texts */
+@media (min-width: 1101px) {
+  @supports (grid-template-rows: subgrid) {
+    .plan { display: grid; grid-template-rows: subgrid; grid-row: span 6; row-gap: 0; }
+    .plan-more { justify-self: start; align-self: end; }
+  }
+}
+/* a work that can be added: the whole tile opens that group of extras in the calculator */
+.zt-add { border: 0; background: none; padding: 0; margin-top: -3px; font: 700 11.5px/1.2 Inter, sans-serif; color: var(--blue); cursor: pointer; }
+.zt-add::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.zt-add:focus-visible { outline: none; }
+.zt.add { transition: border-color .15s, background .15s; }
+.zt.add:hover, .zt.add:focus-within { border-color: var(--blue); border-style: solid; background: #F7FAFF; }
+.zt.add:hover .oi, .zt.add:focus-within .oi { opacity: .7; filter: none; }
+@media (max-width: 700px) {
+  .zt.base { gap: 10px; padding: 10px 34px 10px 10px; }
+  .zt.base .oi { width: 26px; height: 26px; }
+}
+/* swipe row: the tiles start at the same height in every card */
+@media (max-width: 1100px) { .plan-scn { min-height: 4.5em; } }
