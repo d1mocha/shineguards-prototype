@@ -1517,3 +1517,58 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 }
 /* swipe row: the tiles start at the same height in every card */
 @media (max-width: 1100px) { .plan-scn { min-height: 4.5em; } }
+
+/* ═════════ Round 12: move-in / move-out and windows pages ═════════ */
+/* a line under the heading */
+.h1-sub { margin: 10px 0 0; font: 700 17px/1.3 Inter, sans-serif; color: var(--blue); }
+@media (max-width: 980px) { .hero-text > .h1-sub { order: 2; margin: 6px 0 0; } }
+/* a single-service calculator: the service and a quiet way out to the rest */
+.calc-svc { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px; padding: 8px 12px; border-radius: 12px; background: #F6F9FD; border: 1px solid #E3EAF3; font-size: 14px; }
+.calc-svc b { display: inline-flex; align-items: center; gap: 8px; }
+.calc-svc .oi { width: 24px; height: 24px; }
+.calc-svc a { color: var(--blue); font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap; }
+.calc-svc a:hover { text-decoration: underline; }
+.calc.v2 .calc-svc + .q { margin-top: 14px; }
+.wz button { line-height: 1.2; }
+.wz-hint + .wz-q { margin-top: 16px; }
+.cta-alt { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; padding: 8px; min-height: 40px; color: var(--ink2); font-weight: 600; font-size: 14px; text-decoration: none; }
+.cta-alt svg { width: 18px; height: 18px; flex: none; color: var(--wa); }
+.cta-alt:hover { color: var(--blue); }
+/* moving out / moving in */
+.scs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+.sc-card { display: flex; flex-direction: column; background: #fff; border: 2px solid transparent; border-radius: 28px; padding: 24px; box-shadow: 0 22px 44px -38px rgba(2,16,36,.45); transition: border-color .2s, box-shadow .2s; }
+.sc-card.cur { border-color: var(--blue); box-shadow: 0 26px 50px -34px rgba(11,99,229,.5); }
+.sc-card > .oi { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(145deg, #EDF4FF, #DCEAFD); padding: 8px; }
+.sc-card h3 { font: 800 24px Montserrat, sans-serif; margin: 14px 0 4px; }
+.sc-card p { margin: 0; color: var(--ink2); font-size: 15px; }
+.sc-card ul { flex: 1; list-style: none; margin: 14px 0 6px; padding: 0; display: grid; align-content: start; gap: 8px; font-size: 14.5px; }
+.sc-card li { display: flex; gap: 8px; line-height: 1.35; }
+.sc-card li .ck { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--green); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 800; margin-top: 1px; }
+.sc-card.cur .plan-go { background: var(--blue); color: #fff; }
+@media (max-width: 760px) {
+  .scs { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+  .sc-card { padding: 20px 18px; border-radius: 24px; }
+  .sc-card h3 { font-size: 21px; }
+  .sc-card .plan-go { min-height: 44px; }
+}
+/* windows: what the price covers; how the price is formed (calculate → photos → confirmed sum) */
+.incl-grid.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.incl-card li.add .ck { background: var(--blue-soft); color: var(--blue); font-size: 13px; }
+.ic-note { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+.flow { list-style: none; margin: 26px 0 0; padding: 18px 22px; display: flex; gap: 14px 40px; background: #fff; border: 1px solid #E3EAF3; border-radius: 22px; }
+.flow li { position: relative; flex: 1 1 0; display: flex; align-items: flex-start; gap: 12px; }
+.flow li + li::before { content: "→"; position: absolute; left: -28px; top: 3px; font-weight: 700; color: #8FA9C8; }
+.flow .n { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; font: 800 14px Montserrat, sans-serif; display: grid; place-items: center; }
+.flow b { display: block; font-size: 15.5px; line-height: 1.3; }
+.flow small { display: block; margin-top: 3px; font-size: 13.5px; color: var(--muted); }
+.principles.c3 { grid-template-columns: repeat(3, 1fr); margin-top: 14px; }
+@media (max-width: 800px) {
+  .flow { flex-direction: column; padding: 16px; }
+  .flow li + li::before { display: none; }
+  .principles.c3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) { .incl-grid.c2 { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; } .tz-foot a.btn-ghost { width: 100%; justify-content: center; } }
+/* phones: with three facts the first one (price or minimum order) takes its own row */
+@media (max-width: 700px) { .kf > div:first-child:nth-last-child(3) { grid-column: 1 / -1; } }
+/* four cards never squeeze into four narrow columns */
+@media (min-width: 701px) and (max-width: 1100px) { .incl-grid.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
