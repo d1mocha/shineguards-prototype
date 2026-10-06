@@ -425,16 +425,15 @@ const SOLO_PAGE = {
     prep: [
       ['clock', 'Ремонт має бути завершено', 'Прибирання проводимо після завершення пилових і будівельних робіт.'],
       ['bucket', 'Вода та електроенергія', 'На обʼєкті мають бути доступні вода та електроенергія.'],
-      ['boxkey', 'Велике будівельне сміття', 'Вивезення великого будівельного сміття не входить у стандартне прибирання.'],
+      ['boxkey', 'Будівельне сміття', 'Дрібне сміття та упаковку від матеріалів вивозимо. Вивезення великого будівельного сміття не входить у стандартне прибирання.'],
     ],
-    promo: ['Знижка для нових клієнтів на перше замовлення — менеджер врахує її під час оцінки.', 'wa'],
     final: ['Ремонт уже завершено?', 'Надішліть фото — оцінимо обсяг робіт і зорієнтуємо по вартості.'],
     faq: [
       ['Як розраховується ціна?', 'За фактичний час роботи: {rate} за годину роботи одного клінера. Надішліть фото — менеджер оцінить обсяг робіт, скаже, скільки клінерів потрібно, і назве орієнтовний бюджет.'],
       ['Що надіслати для оцінки?', '5–10 фото або коротке відео: загальний вигляд кімнат, підлога, вікна, санвузли та місця з найсильнішими забрудненнями. Вкажіть площу і який був ремонт — косметичний чи капітальний.'],
       ['Що входить у прибирання після ремонту?', 'Будівельний пил зі стін, підлоги та поверхонь, пил у важкодоступних місцях, сліди будівельних матеріалів, вікна з рамами та підвіконнями, двері, розетки й радіатори, сантехніка та фінальне вологе прибирання.'],
       ['Чи видаляєте фарбу, клей і цемент?', 'Видаляємо сліди фарби, клею, затирки та інших будівельних матеріалів, якщо їх можна безпечно видалити без пошкодження поверхні.'],
-      ['Чи вивозите будівельне сміття?', 'Вивезення великого будівельного сміття не входить у стандартне прибирання. Якщо сміття багато, скажіть менеджеру заздалегідь — обговоримо окремо.'],
+      ['Чи вивозите будівельне сміття?', 'Дрібне будівельне сміття та упаковку від матеріалів вивозимо. Вивезення великого будівельного сміття не входить у стандартне прибирання: якщо його багато, скажіть менеджеру заздалегідь — обговоримо окремо.'],
       ['Чи входить миття вікон?', 'Так: миємо скло, рами та підвіконня від пилу й слідів ремонту. Час на вікна входить у загальну оцінку.'],
       ['Скільки клінерів приїде і скільки часу це займе?', 'Залежить від площі та масштабу ремонту. Однокімнатна квартира після косметичного ремонту — зазвичай 4–6 годин, після капітального — більше. Після фото менеджер скаже, яка команда потрібна і скільки часу закласти.'],
       ['Чи має ремонт бути повністю завершений?', 'Так. Прибирання проводимо після завершення пилових і будівельних робіт — інакше пил осяде знову.'],
@@ -714,19 +713,24 @@ const OBJECTS = {
 const OBJ_MAIN = ['hotels', 'offices', 'shops', 'restaurants', 'kitchens', 'gyms', 'medical', 'cars'];
 const OBJ_MORE = ['bizcenters', 'cinemas', 'beauty', 'malls'];
 // the calculator's object → its page
+// Client cases for the business object pages: CASES[objectId] = [case, …]. A case:
+//   { kind, name, place, facts: [[label, value] × 4], task, work: [...], result, quote?: [text, who], before?, after? }
+// (before / after are photos taken from the same angle). Until the owner sends real cases, the pages in CASE_DEMO
+// show the layout with placeholders, labelled as an example — nothing about a client is invented.
+const CASES = {};
+const CASE_DEMO = ['restaurants', 'offices', 'hotels', 'gyms'];
 const OBJ_PAGE = { office: 'offices', restaurant: 'restaurants', gym: 'gyms', shop: 'shops', apartments: 'hotels' };
 const CUT = (v, f) => `https://res.cloudinary.com/dbiy7qyfe/image/upload/h_640,f_auto,q_auto/${v}/${f}`;
-// Photos of the team (photo shoot, April). For now they are served straight from the owner's Google Drive folder;
-// local optimised copies replace these links once the owner confirms the download.
+// Photos of the team (photo shoot, April): optimised copies live in assets/team. `id` is the same frame in the owner's
+// Google Drive folder — the single-file build has no assets folder next to it and shows the photo from there.
 const DPH = (id, w = 1600) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
-const TEAM_PHOTO = DPH('1D90VHEk3WgNUqbgqGvXulib022nUrcmp');
 // [0] is the team portrait (carries the "our team" badge); the rest are working shots with a short caption
 const TEAM_GALLERY = [
-  { img: TEAM_PHOTO, alt: 'Команда клінерів Shine Guards у формі', team: true },
-  { img: DPH('1YoQiDQkufjsNacBn9TumkHgjKVmNuX7Z'), alt: 'Клінерка Shine Guards протирає скляний стіл, колеги прибирають вітальню', cap: 'Працюємо командою', pos: '55% 50%' },
-  { img: DPH('1WD5k0ZAld3PCfTQZDrDXQUPms64Nm2ZV'), alt: 'Клінерка Shine Guards у рукавичках протирає стіл серветкою', cap: 'Увага до деталей', pos: '70% 50%' },
-  { img: DPH('1SArKm8VBW6DxBxgXP4bQCrrnSitd_qrv'), alt: 'Три клінерки Shine Guards прибирають вітальню', cap: 'Свій інвентар і засоби' },
-  { img: DPH('1i1TeVN1HkytFcGGD7a_DbKhkQ-Bm5qtg'), alt: 'Три клінерки Shine Guards на дивані', cap: 'Люди, яким довіряють дім' },
+  { file: 'team-group.jpg', id: '1D90VHEk3WgNUqbgqGvXulib022nUrcmp', alt: 'Команда клінерів Shine Guards у формі', team: true },
+  { file: 'work-team.jpg', id: '1YoQiDQkufjsNacBn9TumkHgjKVmNuX7Z', alt: 'Клінерка Shine Guards протирає скляний стіл, колеги прибирають вітальню', cap: 'Працюємо командою', pos: '55% 50%' },
+  { file: 'work-detail.jpg', id: '1WD5k0ZAld3PCfTQZDrDXQUPms64Nm2ZV', alt: 'Клінерка Shine Guards у рукавичках протирає стіл серветкою', cap: 'Увага до деталей', pos: '70% 50%' },
+  { file: 'work-room.jpg', id: '1SArKm8VBW6DxBxgXP4bQCrrnSitd_qrv', alt: 'Три клінерки Shine Guards прибирають вітальню', cap: 'Свій інвентар і засоби' },
+  { file: 'team-sofa.jpg', id: '1i1TeVN1HkytFcGGD7a_DbKhkQ-Bm5qtg', alt: 'Три клінерки Shine Guards на дивані', cap: 'Люди, яким довіряють дім' },
 ];
 // cut-out figures for the "home / business" cards on the About page
 const TEAM_CUTS = [
@@ -790,7 +794,7 @@ const FAQ = {
     { cat: 'Ціни та оплата', qa: [
       ['Скільки коштує прибирання?', 'Залежить від типу прибирання й площі. Фіксовану ціну ви бачите одразу в калькуляторі, менеджер лише підтверджує її — жодних сюрпризів після прибирання.'],
       ['Коли й як оплачувати?', 'Після прибирання — карткою, за рахунком або готівкою. Виняток — прибирання при переїзді: його оплачують наперед.'],
-      ['Як отримати знижку?', 'Замовляйте базове прибирання регулярно: щотижня −7%, раз на 2 тижні −5%, раз на місяць −3% на кожне прибирання. А на перше замовлення нові клієнти отримують −10%.'],
+      ['Як отримати знижку?', 'Замовляйте базове прибирання регулярно: щотижня −7%, раз на 2 тижні −5%, раз на місяць −3% на кожне прибирання. А на перше замовлення нові клієнти отримують −10% (крім прибирання після ремонту).'],
       ['Чи є мінімальне замовлення?', 'Для окремих послуг — миття вікон або хімчистки — 108 € у Відні, Граці та Мюнхені і 70 € у Братиславі.'],
       ['Чому ціна миття вікон орієнтовна?', 'Час залежить від розміру вікон, рам і забруднення. Калькулятор рахує за нашою методикою, а точну суму менеджер підтвердить за фото ваших вікон.'],
     ] },

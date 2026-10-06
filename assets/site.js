@@ -57,7 +57,7 @@ const state = {
   win: { single: 0, double: 0, door: 0, pano: 0, sides: 2, dirt: 'basic', high: false, blinds: 0, nets: 0, access: '' },
   biz: { obj: 'office', freq: 2, hours: 3, cleaners: 1, early: false, urgent: false, haccp: false, dirty: false, ownChem: false, winHours: 0 },
   apt: { rows: [{ sqm: 45, n: 1 }], chem: false, linen: false, urgent: false },
-  drOpen: new Set(['kitchen']), faqCat: 0, wipeBonus: false,
+  drOpen: new Set(['kitchen']), faqCat: 0, wipeBonus: false, caseIdx: 0,
   ui: { more: false, winMore: false, aptMore: false, bizMore: false, extras: false, welcome: false },
   winStep: 1, chemStep: 1, chemCats: new Set(), faqAll: false,
 };
@@ -1150,9 +1150,11 @@ function reviewsSec() {
     <div class="container sec-head reveal"><div><h2 class="sec-title" style="max-width:540px">Що говорять про нас наші клієнти?</h2><p class="sec-sub">Останні відгуки з Google · перекладено українською.</p></div>${gScore()}</div>
     ${revWheelHTML()}</section>`;
 }
+// a team photo: the local optimised copy; the single-file build (no assets folder) takes the same frame from Drive
+const teamSrc = (sl) => SINGLE ? DPH(sl.id) : `${ROOT}assets/team/${sl.file}`;
 function teamGalleryHTML(biz, noGroup) {
   const slides = noGroup ? TEAM_GALLERY.slice(1) : TEAM_GALLERY;
-  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" alt="${sl.alt}" src="${sl.img}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${sl.team
+  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${sl.team
       ? `<figcaption class="fbadge">${ic('people')}<span><b>Прибирає наша команда</b>Офіційно працевлаштовані клінери з повним страхуванням ризиків</span></figcaption>`
       : `<figcaption class="tg-cap">${sl.cap}</figcaption>`}</figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="Попереднє фото">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="Наступне фото">›</button></div></div>`;
@@ -1683,7 +1685,7 @@ function pageService() {
     const own = { moveout: () => movesSec() + inclSec(s) + prepSec('moveout', 'Як підготувати квартиру до прибирання'), windows: () => winInclSec() + winPriceSec(),
       reno: () => renoInclSec() + prepSec('reno', 'Важливо перед приїздом команди') }[SVC_ID]();
     // after a renovation the last call is to send photos, not to count a price
-    return hero + own + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML() + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true)
+    return hero + own + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + (solo.promo ? promoBannerHTML() : '') + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true)
       + (SVC_ID === 'reno' ? finalWaSec(solo.final) : finalCalcSec(solo.final, SVC_ID)) + relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.');
   }
   return hero
@@ -1719,12 +1721,55 @@ function contactStripHTML() {
       <a class="cs" href="tel:${PHONE_TEL}">${SOC.ph}<span>${PHONE}</span></a></div>
   </div></div></section>`;
 }
+/* ═════════ CLIENT CASES (business object pages) ═════════
+   One concrete object per card: before / after, four facts, the task, what we do there, the result, the client's words.
+   Real cases come from CASES in data.js; until then the CASE_DEMO pages show the layout with placeholders. */
+const BA_ARROWS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg>';
+// the layout sample: the list of works is this object's real checklist, everything about a client is a labelled blank
+function demoCase(id) {
+  const o = OBJECTS[id];
+  return { demo: true, kind: o.name, name: 'Тут буде назва клієнта', place: 'місто, район',
+    facts: [['Площа'], ['Графік'], ['Команда'], ['Працюємо разом']],
+    task: 'Задача клієнта: з чим він до нас прийшов і що для нього було важливо.',
+    work: o.incl.slice(0, 4).map((g) => `${g.t} — ${g.items.slice(0, 2).join(', ').toLowerCase()}`),
+    result: 'Результат у фактах: що змінилося для клієнта, цифри, терміни.',
+    quote: ['Відгук клієнта — одне-два речення своїми словами.', 'Імʼя, посада'] };
+}
+const casesFor = (id) => (CASES[id] && CASES[id].length ? CASES[id] : CASE_DEMO.includes(id) ? [demoCase(id)] : []);
+// before / after: one photo over the other, the divider follows a range input (mouse, touch and keyboard)
+function beforeAfterHTML(before, after) {
+  const side = (cls, img, alt, label, icn) => img ? `<div class="${cls}"><img loading="lazy" alt="${alt}" src="${img}" /></div>` : `<div class="${cls} ph">${ic(icn)}<span>${label}</span></div>`;
+  return `<div class="ba" data-ba style="--p:50%">${side('ba-a', after, 'Після прибирання', 'Фото «після»', 'spray')}${side('ba-b', before, 'До прибирання', 'Фото «до»', 'search')}
+      <span class="ba-tag l">До</span><span class="ba-tag r">Після</span><span class="ba-line" aria-hidden="true"></span><span class="ba-knob" aria-hidden="true">${BA_ARROWS}</span>
+      <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Порівняти фото до і після прибирання" /></div>`;
+}
+function caseHTML(c) {
+  return `<article class="cs ${c.demo ? 'demo' : ''}">${beforeAfterHTML(c.before, c.after)}
+    <div class="cs-body">
+      <div class="cs-top"><span class="cs-kicker">Кейс · ${c.kind}</span>${c.demo ? '<span class="cs-demo">Приклад оформлення</span>' : ''}</div>
+      <h3>${c.name}</h3><p class="cs-place">${c.place}</p>
+      <dl class="cs-facts">${c.facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v || '<i class="sk"></i>'}</dd></div>`).join('')}</dl>
+      <div class="cs-cols"><div><h4>Задача</h4><p>${c.task}</p></div><div><h4>Що робимо</h4><ul>${c.work.map((x) => `<li>${x}</li>`).join('')}</ul></div></div>
+      <div class="cs-res"><h4>Результат</h4><p>${c.result}</p></div>
+      ${c.quote ? `<figure class="cs-quote"><blockquote>${c.quote[0]}</blockquote><figcaption>${c.quote[1]}</figcaption></figure>` : ''}
+      <button type="button" class="btn-blue" data-open="book" data-bizgoal="Комерційна пропозиція">Отримати пропозицію для свого обʼєкта</button>
+    </div></article>`;
+}
+function caseSec(id) {
+  const list = casesFor(id); if (!list.length) return '';
+  const i = Math.min(state.caseIdx, list.length - 1);
+  // several cases of one object type: chips with the clients' names switch the card
+  const tabs = list.length > 1 ? `<div class="cs-tabs">${list.map((x, k) => `<button type="button" class="chip" data-case="${k}" aria-pressed="${k === i}">${x.name}</button>`).join('')}</div>` : '';
+  return sec('case', list.length > 1 ? 'Кейси наших клієнтів' : 'Кейс: як це працює на обʼєкті',
+    list[0].demo ? 'Так виглядатиме кейс на цій сторінці. Назву клієнта, цифри й фото «до / після» додамо, щойно отримаємо дані.' : '', `${tabs}<div id="caseBody">${caseHTML(list[i])}</div>`);
+}
 function pageObject() {
   const o = PAGE_OBJ, c = CITIES[state.city], sk = country() === 'sk';
   const crumbs = [['Головна', homeHref('private')], ['Послуги для бізнесу', homeHref('business')], [o.name]];
   const price = o.calc.obj === 'other' ? ['Ціна', 'після огляду'] : o.calc.obj === 'apartments' ? ['Ціна без ПДВ', `від ${eur2(APT[sk ? 'sk' : 'at'][0])} / апартамент`] : sk ? ['Ставка', 'за запитом'] : ['Ставка без ПДВ', 'від 27 € / год'];
   return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">у ${c.loc}</span>`, lead: o.lead, facts: [price, ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']], trust: trustBiz() })
     + sec('incl', 'Що входить', o.haccp ? 'Кухню прибираємо за стандартами HACCP.' : '', inclGroups(o.incl))
+    + caseSec(SVC_ID)
     + aboutSec()
     + stepsSec('business')
     + proofSec()
@@ -1738,7 +1783,7 @@ function objRelatedSec(cur) {
 function pageAbout() {
   return heroHTML({ crumbs: [['Головна', homeHref()], ['Про нас']], kicker: 'Про Shine Guards', h1: 'Будуємо сервіс прибирання, якому можна <span class="accent">довірити свій простір</span>',
     lead: 'Shine Guards — професійний сервіс прибирання для дому та бізнесу. Ми поєднуємо перевірену команду, чіткі стандарти, контроль якості та персональний супровід.', trust: ABOUT_FACTS,
-    side: `<div class="hero-photo"><img alt="Команда клінерів Shine Guards у формі" referrerpolicy="no-referrer" src="${TEAM_PHOTO}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
+    side: `<div class="hero-photo"><img alt="Команда клінерів Shine Guards у формі" referrerpolicy="no-referrer" src="${teamSrc(TEAM_GALLERY[0])}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
     + statsStripSec(STATS_PRIVATE) + storySec() + missionSec() + peopleSec() + principlesSec() + audienceSec() + socialProofSec() + finalCtaSec() + contactsSec();
 }
 function storySec() {
@@ -2061,6 +2106,7 @@ function applyParams() {
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (!calcStarted && t.closest && t.closest('#calc')) { calcStarted = true; track('calc_start'); }
+  if (t.classList.contains('ba-range')) { t.parentElement.style.setProperty('--p', t.value + '%'); return; }
   if (t.id === 'sqmRange') setSqm(t.value, true);
   else if (t.id === 'sqmInput' && t.value.length >= 2) setSqm(t.value, false);
   else if (t.id === 'bizHours') {
@@ -2136,6 +2182,10 @@ document.addEventListener('click', (e) => {
     const [k, g] = d.addto.split(':'); closeAll(); if (state.type !== k) setType(k); state.touched = true;
     if (g === 'win' && !winCount() && k === 'basic') state.win.sides = 1;
     return openDrawer(g);
+  }
+  if (d.case != null) { // another client's case of the same object type
+    const list = casesFor(SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1);
+    $('#caseBody').innerHTML = caseHTML(list[state.caseIdx]); $$('.cs-tabs .chip').forEach((x, k) => x.setAttribute('aria-pressed', k === state.caseIdx)); return;
   }
   if (d.cklist) { openChecklist(d.cklist); return; }
   if (d.pick) { closeAll(); setType(d.pick); toCalc(); return; }

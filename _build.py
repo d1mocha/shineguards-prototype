@@ -175,7 +175,7 @@ TEMPLATE = '''<!DOCTYPE html>
 <meta property="og:image" content="{og_image}" />
 <meta property="og:locale" content="uk_UA" />
 <meta name="sg" data-root="{root}" data-page="{page}" data-kind="{kind}" data-svc="{svc}" data-city="{city}" />
-<link rel="icon" href="{root}assets/logo.svg" type="image/svg+xml" />
+<link rel="icon" href="{root}assets/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@600;700;800&amp;display=swap" rel="stylesheet" />
@@ -253,7 +253,7 @@ SINGLE_TEMPLATE = '''<!DOCTYPE html>
 <title>Shine Guards — прототип сайту</title>
 <meta name="description" content="" />
 <meta name="robots" content="noindex, nofollow" />
-<link rel="icon" href="{logo}" type="image/svg+xml" />
+<link rel="icon" href="{icon}" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@600;700;800&amp;display=swap" rel="stylesheet" />
@@ -285,7 +285,8 @@ def build_single(path):
     logo = 'data:image/svg+xml;base64,' + base64.b64encode(read('assets', 'logo.svg').encode('utf-8')).decode('ascii')
     seo = {f'/{rel}/': list(meta['seo']) for rel, meta in page_list()}
     cfg = json.dumps({'logo': logo, 'seo': seo}, ensure_ascii=False)
-    out = SINGLE_TEMPLATE.format(logo=logo, css=read('assets', 'site.css'), cfg=inline_js(cfg),
+    icon = 'data:image/svg+xml;base64,' + base64.b64encode(read('assets', 'favicon.svg').encode('utf-8')).decode('ascii')
+    out = SINGLE_TEMPLATE.format(icon=icon, css=read('assets', 'site.css'), cfg=inline_js(cfg),
                                  data_js=inline_js(read('assets', 'data.js')), site_js=inline_js(read('assets', 'site.js')))
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(out)
