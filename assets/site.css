@@ -1561,7 +1561,8 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 .flow .n { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; font: 800 14px Montserrat, sans-serif; display: grid; place-items: center; }
 .flow b { display: block; font-size: 15.5px; line-height: 1.3; }
 .flow small { display: block; margin-top: 3px; font-size: 13.5px; color: var(--muted); }
-.principles.c3 { grid-template-columns: repeat(3, 1fr); margin-top: 14px; }
+.principles.c3 { grid-template-columns: repeat(3, 1fr); }
+.flow + .principles.c3 { margin-top: 14px; }
 @media (max-width: 800px) {
   .flow { flex-direction: column; padding: 16px; }
   .flow li + li::before { display: none; }
@@ -1572,3 +1573,39 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 @media (max-width: 700px) { .kf > div:first-child:nth-last-child(3) { grid-column: 1 / -1; } }
 /* four cards never squeeze into four narrow columns */
 @media (min-width: 701px) and (max-width: 1100px) { .incl-grid.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* after renovation: the sum comes from photos, the rate is a smaller line under it */
+.kf dd small { display: block; margin-top: 3px; font: 500 13.5px/1.35 Inter, sans-serif; color: var(--ink2); }
+@media (max-width: 700px) { .kf > div:only-child { grid-column: 1 / -1; } }
+.side-tip { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 9px 12px; border-radius: 12px; background: var(--bg); font-size: 13.5px; line-height: 1.4; color: var(--ink2); }
+.side-tip svg { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--blue); }
+/* one residential checklist; what it does not include; how it differs from deep cleaning */
+.incl-grid.reno-incl { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
+.ic-out { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 0; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 14px; line-height: 1.35; color: var(--ink2); }
+.ic-out .x { flex: none; width: 18px; height: 18px; border-radius: 50%; background: #FDECEC; color: #C4352B; display: grid; place-items: center; font-size: 10px; font-weight: 800; margin-top: 1px; }
+.vs-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 16px; background: var(--bg); font-size: 14px; line-height: 1.4; color: var(--ink2); }
+.vs-row + .vs-row { margin-top: 8px; }
+.vs-row.cur { background: var(--tint); }
+.vs-row .oi { width: 36px; height: 36px; border-radius: 10px; background: #fff; padding: 5px; }
+.vs-row b { display: block; font-size: 14.5px; color: var(--ink); }
+/* before / after: real photos from one job, empty frames until they are added */
+.ba-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 28px; }
+.ba { margin: 0; background: #fff; border-radius: 22px; padding: 10px; }
+.ba-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ba-img { position: relative; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; background: #EEF2F7; }
+.ba-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ba-img em { position: absolute; left: 8px; top: 8px; font-style: normal; font-size: 12px; font-weight: 700; color: #fff; background: rgba(15,23,42,.72); border-radius: 999px; padding: 2px 9px; }
+.ba-img em.after { background: var(--green); }
+.ba-ph { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; color: var(--muted); background: repeating-linear-gradient(135deg, #EEF2F7 0 12px, #E7EDF5 12px 24px); }
+.ba-ph .oi { width: 40px; height: 40px; opacity: .65; }
+.ba-ph small { font-size: 12.5px; }
+.ba figcaption { padding: 10px 6px 4px; font-size: 14.5px; font-weight: 600; }
+.fc-btn.wa { background: var(--wa); color: #0B3B1F; box-shadow: 0 12px 26px -12px rgba(10,90,45,.7); }
+.fc-btn.wa:hover { background: #1FBF5B; transform: translateY(-1px); }
+.fc-btn.wa svg { width: 20px; height: 20px; color: currentColor; }
+@media (max-width: 860px) {
+  .incl-grid.reno-incl { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+  /* phones: the pairs are swiped sideways instead of three tall cards in a row */
+  .ba-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 86%; gap: 10px; margin: 18px -16px 0; padding: 0 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .ba-grid::-webkit-scrollbar { display: none; }
+  .ba { scroll-snap-align: center; }
+}
