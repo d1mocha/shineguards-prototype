@@ -8,3 +8,21 @@
   for = "/*"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
+
+# Airbnb cleaning lives in the business section now: old private links follow it
+[[redirects]]
+  from = "/vienna/ua/services/private/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-vienna"
+  to = "/vienna/ua/services/business/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-vienna/"
+  status = 301
+[[redirects]]
+  from = "/graz/ua/services/private/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-graz"
+  to = "/graz/ua/services/business/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-graz/"
+  status = 301
+[[redirects]]
+  from = "/munich/ua/services/private/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-munich"
+  to = "/munich/ua/services/business/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-munich/"
+  status = 301
+[[redirects]]
+  from = "/bratislava/ua/services/private/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-bratislava"
+  to = "/bratislava/ua/services/business/pribirannya-airbnb-ta-korotkostrokovoyi-orendi-in-bratislava/"
+  status = 301

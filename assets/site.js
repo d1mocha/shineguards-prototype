@@ -88,8 +88,8 @@ const isPackage = (t = state.type) => ['basic', 'general', 'deep', 'moveout'].in
 // the regular schedule and its discount belong to the basic package — general and deep are one-off jobs
 const isRegType = (t = state.type) => t === 'basic';
 const isReg = () => state.freq !== 'once' && isRegType();
-// the Welcome bonus is counted in the calculator where no other discount can clash with it (so far: move-in / move-out)
-const isWelcomeType = (t = state.type) => t === 'moveout';
+// the Welcome bonus (−10% of the whole first order) is counted for the one-off packages; basic has the regular discount instead
+const isWelcomeType = (t = state.type) => ['general', 'deep', 'moveout'].includes(t);
 const freqDisc = () => (FREQ.find((f) => f.id === state.freq) || FREQ[0]).disc;
 const isIncluded = (id) => (INCLUDED[state.type] || []).includes(id);
 // the first group of extras that really has something to add to the chosen package
@@ -223,7 +223,6 @@ function computePriv() {
   const city = CITIES[state.city], r = R();
   const out = { lines: [], gifts: [], total: 0, listTotal: 0, extrasCount: 0 };
   if (state.type === 'reno') return { ...out, reno: true };
-  if (state.type === 'airbnb') return { ...out, ...aptCalc(true) };
   let t = -1;
   if (isPackage()) {
     if (state.sqm > 300) return { ...out, bigArea: true };
@@ -367,7 +366,7 @@ function svcSubline(kind, id) {
   if (kind === 'business') return SVCS.business[id].tag;
   const cp = cityPrices(), r = R();
   if (PRICE_KEY[id]) return `від ${eur(cp[PRICE_KEY[id]][0])}`;
-  return { windows: `від ${eur(r.minVisit)}`, extras: 'від 22 €', reno: `${dec(r.windowHour)} € / год`, airbnb: `від ${eur2(APT[country() === 'sk' ? 'sk' : 'at'][0] * (1 + CTRY[country()].vat))}` }[id] || '';
+  return { windows: `від ${eur(r.minVisit)}`, extras: 'від 22 €', reno: `${dec(r.windowHour)} € / год за клінера` }[id] || '';
 }
 const objIco = (id) => `<span class="oi obj-ic">${OBJ_SVG[OBJECTS[id].icon] || I.office}</span>`;
 const objMenuItem = (id) => `<a class="mega-item" href="${objHref(id)}" ${PAGE === 'object' && SVC_ID === id ? 'aria-current="page"' : ''}>${objIco(id)}<span><b>${OBJECTS[id].name}</b><small>${OBJECTS[id].tag}</small></span></a>`;
@@ -418,7 +417,7 @@ function headerHTML() {
   </div></header>`;
 }
 const ftHead = (t) => `<button type="button" class="ft-h" data-ftcol aria-expanded="false">${t}${chev}</button>`;
-const FOOT_PRIV = { basic: 'Базове прибирання', general: 'Генеральне прибирання', deep: 'Глибоке прибирання', moveout: 'Прибирання при переїзді', windows: 'Миття вікон', airbnb: 'Прибирання Airbnb', reno: 'Після ремонту', extras: 'Додаткові послуги' };
+const FOOT_PRIV = { basic: 'Базове прибирання', general: 'Генеральне прибирання', deep: 'Глибоке прибирання', moveout: 'Прибирання при переїзді', windows: 'Миття вікон', reno: 'Після ремонту', extras: 'Додаткові послуги' };
 function footerHTML() {
   const col = (t, links) => `<div class="ft-col"><h4>${ftHead(t)}</h4><div class="ft-list">${links}</div></div>`;
   const cities = Object.entries(CITIES).map(([k, c]) => `<a href="${homeHref('private', k)}">${c.name}</a>`).join('');
@@ -498,7 +497,7 @@ function privInputs() {
   const cp = cityPrices();
   let h = `<div class="label">Тип прибирання</div>
     <div class="types">${['basic', 'general', 'deep'].map((t) => `<button type="button" class="type" data-type="${t}" aria-pressed="${state.type === t}"><b>${TYPES[t].name}</b><span>від <span class="from">${eur(cp[t][0])}</span></span></button>`).join('')}</div>
-    <div class="more-types">${['moveout', 'windows', 'chem', 'reno', 'airbnb'].map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>`;
+    <div class="more-types">${['moveout', 'windows', 'chem', 'reno'].map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>`;
   if (isPackage()) {
     const pct = ((Math.min(state.sqm, 301) - 15) / 286 * 100).toFixed(1);
     const tier = state.sqm <= 300 ? 'тариф ' + TIER_LABELS[tierOf(state.sqm)] + ' м²' : '';
@@ -517,7 +516,6 @@ function privInputs() {
     }
   }
   if (state.type === 'windows') h += `<div class="label">Ваші вікна <span class="hint">орієнтовний розрахунок</span></div>${windowsUI('calc')}`;
-  if (state.type === 'airbnb') h += aptInputs(country() === 'sk');
   return h;
 }
 
@@ -601,13 +599,13 @@ function soloHeadHTML(solo) {
     + (solo === 'moveout' ? qLabel(1, 'Ви заїжджаєте чи виїжджаєте?') + `<div class="optcards two">${MOVES.map(([id, t, x]) => `<button type="button" class="optcard" data-move="${id}" aria-pressed="${state.move === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>` : '');
 }
 function privInputsB() {
-  const cp = cityPrices(), other = ['moveout', 'windows', 'chem', 'reno', 'airbnb'];
+  const cp = cityPrices(), other = ['moveout', 'windows', 'chem', 'reno'];
   const isOther = other.includes(state.type), open = state.ui.more || isOther;
   const solo = soloSvc();
   // a page about one service: no chooser of cleaning types, a quiet way out to the rest
   let h = solo ? soloHeadHTML(solo) : qLabel(1, 'Оберіть тип прибирання') + `<div class="types">${['basic', 'general', 'deep'].map((t) => `<button type="button" class="type" data-type="${t}" aria-pressed="${state.type === t}"><b>${TYPES[t].name}</b><span>від <span class="from">${eur(cp[t][0])}</span></span></button>`).join('')}</div>
     ${open ? `<div class="more-types">${other.map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>` : ''}
-    ${isOther ? '' : moreBtn('more', 'Інша послуга: переїзд, після ремонту, Airbnb…', open)}`;
+    ${isOther ? '' : moreBtn('more', 'Інша послуга: переїзд, вікна, після ремонту…', open)}`;
   if (isPackage()) {
     const pct = ((Math.min(state.sqm, 301) - 15) / 286 * 100).toFixed(1);
     h += qLabel(2, 'Площа квартири', `<label class="area-big"><input id="sqmInput" type="number" inputmode="numeric" min="15" max="999" value="${state.sqm}" aria-label="Площа в м²" /><span>м²</span></label>`)
@@ -619,7 +617,6 @@ function privInputsB() {
   }
   if (state.type === 'windows') h += windowsWizard();
   if (state.type === 'chem') h += chemWizard();
-  if (state.type === 'airbnb') h += aptInputsB(country() === 'sk', 2);
   return h;
 }
 // Step bar shared by the step-by-step calculators
@@ -1010,14 +1007,14 @@ const TRUST_B = [
   ['<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', 'Свята й вихідні — без доплат'],
 ];
 // Short service name for cards/footer: the "для бізнесу" suffix is implied there
-const cardName = (kind, id) => kind !== 'business' ? (id === 'airbnb' ? 'Прибирання Airbnb' : SVCS[kind][id].name) : id === 'klining' ? 'Комплексний клінінг' : SVCS.business[id].name.replace(' для бізнесу', '');
+const cardName = (kind, id) => kind !== 'business' ? SVCS[kind][id].name : id === 'klining' ? 'Комплексний клінінг' : SVCS.business[id].name.replace(' для бізнесу', '');
 // Trust bullets tailored to the service (windows/reno are estimates, move-out is prepaid)
 const trustBiz = () => TRUST_B.slice();
 function trustFor(kind, id) {
   if (kind === 'business') return trustBiz().slice(0, 3);
   const t = TRUST_P.slice();
   if (id === 'windows') t[0] = [t[0][0], 'Орієнтовна ціна одразу — точну підтвердимо за фото'];
-  if (id === 'reno') t[0] = [t[0][0], 'Оплата за фактичний час — суму назвемо за фото'];
+  if (id === 'reno') t[0] = [t[0][0], `${dec(R().windowHour)} € / год роботи одного клінера`];
   if (id === 'moveout') { t[0] = [t[0][0], 'Фіксована ціна за площею']; t[2] = ['<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', 'Працюємо щодня — бронюйте на потрібну дату']; }
   return t;
 }
@@ -1154,8 +1151,8 @@ function reviewsSec() {
     ${revWheelHTML()}</section>`;
 }
 function teamGalleryHTML(biz, noGroup) {
-  const g = TEAM_GALLERY, slides = noGroup ? g.slice(1) : biz ? [g[0], g[2], g[3], g[1], g[5]] : g;
-  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s ${sl.photo ? 'photo' : 'cut ' + sl.cls}"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${sl.img}" />${sl.photo
+  const slides = noGroup ? TEAM_GALLERY.slice(1) : TEAM_GALLERY;
+  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" alt="${sl.alt}" src="${sl.img}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${sl.team
       ? `<figcaption class="fbadge">${ic('people')}<span><b>Прибирає наша команда</b>Офіційно працевлаштовані клінери з повним страхуванням ризиків</span></figcaption>`
       : `<figcaption class="tg-cap">${sl.cap}</figcaption>`}</figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="Попереднє фото">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="Наступне фото">›</button></div></div>`;
@@ -1179,7 +1176,7 @@ function aboutSec(title, opts = {}) {
 }
 const statsStripSec = (list = P() ? STATS_PRIVATE : STATS_BIZ) => `<section class="block tight" id="numbers"><div class="container reveal">${statsHTML(list)}</div></section>`;
 function moreServicesSec() {
-  const ids = ['moveout', 'windows', 'chem', 'reno', 'airbnb', 'extras'];
+  const ids = ['moveout', 'windows', 'chem', 'reno', 'extras'];
   return sec('more-svc', 'Інші послуги', 'Окремо або разом із прибиранням.', `<div class="svc-minis">${ids.map((id, i) => miniCardHTML('private', id, i)).join('')}</div>`);
 }
 // Two offers in the vivid promo style; the regular discount already lives in the calculator
@@ -1537,18 +1534,21 @@ function wipeReset() {
 }
 
 /* Request-only services (after renovation, office move): no fake calculator — explain how the estimate works */
+// WhatsApp with the request already written — the client only attaches photos
+const waHref = (text) => `${WA}?text=${encodeURIComponent(text)}`;
+const waRenoHref = () => waHref(`Добрий день! Потрібне прибирання після ремонту (${CITIES[state.city].name}). Надсилаю фото.`);
 function sideRequest() {
   const biz = !P();
   const steps = biz
     ? [['Опишіть обʼєкт', 'тип, площа, бажаний графік'], ['Огляд або фото', 'менеджер приїде чи оцінить за фото'], ['Пропозиція за 24 години', 'з договором і документами']]
-    : [['Надішліть фото', 'кімнати й масштаб робіт'], ['Отримайте оцінку', `${dec(R().windowHour)} € / год за клінера`], ['Прибирання в зручний день', 'оплата за фактичний час']];
+    : [['Надішліть фото', 'кімнати та масштаб робіт'], ['Отримайте орієнтовну оцінку', 'обсяг команди та бюджет'], ['Оберіть день', 'оплата за фактичний час']];
   return `<div class="side-card">
-    <h2>${biz ? 'Розрахуємо під ваш обʼєкт' : 'Оцінимо за фото'}</h2>
-    <p class="muted">${biz ? 'Такі роботи рахуємо індивідуально — без шаблонних цін і доплат.' : 'Обсяг після ремонту дуже різний, тому ціну називаємо за фото, а не наосліп.'}</p>
+    <h2>${biz ? 'Розрахуємо під ваш обʼєкт' : 'Оцінимо прибирання за фото'}</h2>
+    <p class="muted">${biz ? 'Такі роботи рахуємо індивідуально — без шаблонних цін і доплат.' : 'Обсяг після ремонту дуже різний, тому вартість називаємо за фото, а не наосліп.'}</p>
     <ol class="side-steps">${steps.map(([t, d], i) => `<li><span class="n">${i + 1}</span><span><b>${t}</b><small>${d}</small></span></li>`).join('')}</ol>
     ${biz
       ? `<button type="button" class="cta" data-open="book" data-bizgoal="Комерційна пропозиція">Надіслати запит</button><button type="button" class="side-alt" data-open="book" data-bizgoal="Огляд обʼєкта">або запросити огляд обʼєкта</button>`
-      : `<a class="cta wa-cta" href="${WA}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото у WhatsApp</a><button type="button" class="side-alt" data-open="book">або залишити заявку — передзвонимо</button>`}
+      : `<p class="side-promise">Надішліть 5–10 фото або коротке відео — менеджер зорієнтує по вартості.</p><a class="cta wa-cta" href="${waRenoHref()}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото у WhatsApp</a><button type="button" class="side-alt" data-open="book">або залишити заявку — передзвонимо</button>`}
     <div class="cta-note"><span class="live"><i class="dot"></i><span class="lt"></span></span></div>
   </div>`;
 }
@@ -1603,6 +1603,19 @@ function finalCalcSec([t, x], pick) {
     <div class="fc-btns"><button type="button" class="fc-btn home" data-pick="${pick}">${CALC_SVG}Розрахувати вартість</button><a class="fc-btn biz" href="${WA}" target="_blank" rel="noopener">${SOC.wa}Написати у WhatsApp</a></div>
   </div></div></section>`;
 }
+// the same closing block for pages where the next step is photos in WhatsApp
+function finalWaSec([t, x]) {
+  return `<section class="block" id="start"><div class="container"><div class="final-cta reveal">
+    <div><h2>${t}</h2><p>${x}</p></div>
+    <div class="fc-btns"><a class="fc-btn wa" href="${waRenoHref()}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото у WhatsApp</a><button type="button" class="fc-btn biz" data-open="book">Залишити заявку</button></div>
+  </div></div></section>`;
+}
+/* After renovation: one residential checklist, the difference from deep cleaning said once, business gets a link */
+function renoInclSec() {
+  const sp = SOLO_PAGE.reno;
+  return sec('incl', 'Що входить у прибирання після ремонту', '', `<div class="principles when c3">${sp.incl.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>
+    <div class="tz-foot reveal"><p class="tz-note">${sp.note}</p><a class="btn-ghost" href="${svcHref('reno', 'business')}">Прибирання після ремонту для бізнесу →</a></div>`);
+}
 /* Move-in / move-out: one service and one price, two situations */
 function movesSec() {
   return sec('scenario', 'Заїжджаєте чи виїжджаєте?', 'Одна послуга й одна ціна — різні акценти.', `<div class="scs">${SOLO_PAGE.moveout.moves.map(([id, icn, t, x, items], i) => `
@@ -1614,8 +1627,10 @@ function movesSec() {
 function syncMove() {
   $$('#scenario .sc-card').forEach((el) => { const on = el.dataset.sc === state.move; el.classList.toggle('cur', on); el.querySelector('.plan-go').textContent = on ? '✓ Обрано' : 'Обрати й розрахувати'; });
 }
-function prepSec() {
-  return sec('prep', 'Як підготувати квартиру до прибирання', '', `<div class="principles when">${SOLO_PAGE.moveout.prep.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`);
+// conditions the client should know before the team arrives
+function prepSec(id, title) {
+  const list = SOLO_PAGE[id].prep;
+  return sec('prep', title, '', `<div class="principles when${list.length === 3 ? ' c3' : ''}">${list.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`);
 }
 // the Welcome banner shows the bonus in money for the apartment in the calculator
 function syncWelcome() {
@@ -1642,7 +1657,8 @@ function pageService() {
   let facts = [];
   if (kind === 'private') {
     const sub = svcSubline('private', SVC_ID);
-    if (sub) facts.push(SVC_ID === 'windows' ? ['Мінімальне замовлення', eur(R().minVisit)] : ['Ціна', sub]);
+    if (SVC_ID === 'reno') facts.push(['Вартість', 'після оцінки за фото'], ['Оплата', 'за фактичний час']); // the budget matters more than the hourly rate
+    else if (sub) facts.push(SVC_ID === 'windows' ? ['Мінімальне замовлення', eur(R().minVisit)] : ['Ціна', sub]);
     if (PRICE_KEY[SVC_ID]) { const cr = c.crew[PRICE_KEY[SVC_ID]]; facts.push(['Тривалість', `${dec(Math.min(...cr.h))}–${dec(Math.max(...cr.h))} год`]); }
     // the third fact is what sets the package apart: the schedule for basic, the size of the checklist for general and deep
     if (tier === 'basic') facts.push(['Регулярно', 'до −7%']);
@@ -1663,8 +1679,13 @@ function pageService() {
     + faqSec(fillFaq(TIER_PAGE[tier].faq, tier), faqTitle, true) + finalCalcSec(TIER_PAGE[tier].final, tier) + relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.');
   // single-service pages: own blocks → how we work → reviews → Welcome bonus → own questions → one more button → other services
   const solo = kind === 'private' && SOLO_PAGE[SVC_ID];
-  if (solo) return hero + (SVC_ID === 'moveout' ? movesSec() + inclSec(s) + prepSec() : winInclSec() + winPriceSec()) + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML()
-    + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true) + finalCalcSec(solo.final, SVC_ID) + relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.');
+  if (solo) {
+    const own = { moveout: () => movesSec() + inclSec(s) + prepSec('moveout', 'Як підготувати квартиру до прибирання'), windows: () => winInclSec() + winPriceSec(),
+      reno: () => renoInclSec() + prepSec('reno', 'Важливо перед приїздом команди') }[SVC_ID]();
+    // after a renovation the last call is to send photos, not to count a price
+    return hero + own + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML() + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true)
+      + (SVC_ID === 'reno' ? finalWaSec(solo.final) : finalCalcSec(solo.final, SVC_ID)) + relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.');
+  }
   return hero
     + (s.incl === 'tier' ? compareSec() : inclSec(s))
     + stepsSec(s.steps || (kind === 'private' ? 'private' : 'business'), s.steps && !['private', 'business'].includes(s.steps) ? 'Як ми це робимо' : 'Всього 4 простих кроки до бездоганної чистоти')
@@ -1683,7 +1704,8 @@ function promoBannerHTML() {
   if (up) { p = { ...PROMOS.private[0], tag: up[0], t: up[1], d: up[2] }; btn = `<a class="pbtn" href="${svcHref('basic', 'private')}?freq=weekly">Розрахувати базове</a>`; }
   // single-service pages: the Welcome bonus speaks about this very service (and, where it is counted, in money)
   const sp = P() && SOLO_PAGE[SVC_ID] && SOLO_PAGE[SVC_ID].promo;
-  if (sp) { p = { ...p, d: sp[0] }; btn = sp[1] === 'welcome' ? '<button type="button" class="pbtn" data-promo="welcome">Застосувати −10%</button>' : `<button type="button" class="pbtn" data-pick="${SVC_ID}">Розрахувати вартість</button>`; }
+  if (sp) { p = { ...p, d: sp[0] }; btn = sp[1] === 'welcome' ? '<button type="button" class="pbtn" data-promo="welcome">Застосувати −10%</button>'
+    : sp[1] === 'wa' ? `<a class="pbtn" href="${waRenoHref()}" target="_blank" rel="noopener">Надіслати фото</a>` : `<button type="button" class="pbtn" data-pick="${SVC_ID}">Розрахувати вартість</button>`; }
   return `<section class="block" id="promo"><div class="container"><article class="promo promo-bn ${p.cls} reveal">
     <div class="bd"><span class="pct ${p.sm ? 'sm' : ''}">${p.pct}</span><div class="tx">${p.tag ? `<span class="pm-tag">${p.tag}</span>` : ''}<h3>${p.t.charAt(0).toUpperCase() + p.t.slice(1)}</h3><p>${p.d}</p></div>${btn}</div>
     <img class="cut" loading="lazy" alt="${p.alt}" src="${p.img}" /></article>
@@ -1716,7 +1738,7 @@ function objRelatedSec(cur) {
 function pageAbout() {
   return heroHTML({ crumbs: [['Головна', homeHref()], ['Про нас']], kicker: 'Про Shine Guards', h1: 'Будуємо сервіс прибирання, якому можна <span class="accent">довірити свій простір</span>',
     lead: 'Shine Guards — професійний сервіс прибирання для дому та бізнесу. Ми поєднуємо перевірену команду, чіткі стандарти, контроль якості та персональний супровід.', trust: ABOUT_FACTS,
-    side: `<div class="hero-photo"><img alt="Команда клінерів Shine Guards у формі" src="${TEAM_PHOTO}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
+    side: `<div class="hero-photo"><img alt="Команда клінерів Shine Guards у формі" referrerpolicy="no-referrer" src="${TEAM_PHOTO}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
     + statsStripSec(STATS_PRIVATE) + storySec() + missionSec() + peopleSec() + principlesSec() + audienceSec() + socialProofSec() + finalCtaSec() + contactsSec();
 }
 function storySec() {
@@ -1737,8 +1759,8 @@ function principlesSec() {
 function audienceSec() {
   const card = (cls, icon, t, d, href, btn, sl) => `<a class="aud ${cls} pop" href="${href}"><div class="aud-t"><span class="aud-ic">${icon}</span><h3>${t}</h3><p>${d}</p><span class="aud-go">${btn} →</span></div><img class="cut" loading="lazy" alt="${sl.alt}" src="${sl.img}" /></a>`;
   return sec('audience', 'Працюємо для дому та бізнесу', '', `<div class="auds">
-    ${card('home', ICON_HOME, 'Для дому', 'Квартири, будинки, регулярне та разове прибирання.', listHref(), 'Послуги для дому', TEAM_GALLERY[1])}
-    ${card('biz', ICON_BIZ, 'Для бізнесу', 'Офіси, HoReCa, апартаменти та комерційні обʼєкти.', homeHref('business'), 'Рішення для бізнесу', TEAM_GALLERY[3])}</div>`);
+    ${card('home', ICON_HOME, 'Для дому', 'Квартири, будинки, регулярне та разове прибирання.', listHref(), 'Послуги для дому', TEAM_CUTS[0])}
+    ${card('biz', ICON_BIZ, 'Для бізнесу', 'Офіси, HoReCa, апартаменти та комерційні обʼєкти.', homeHref('business'), 'Рішення для бізнесу', TEAM_CUTS[1])}</div>`);
 }
 // companies → real people → Google 4,9 in one block
 function socialProofSec() {
@@ -1985,8 +2007,6 @@ function render() {
 }
 let megaTimer, megaOpenedAt = 0;
 function setType(t) {
-  // apartments have their own page with the multi-apartment calculator
-  if (t === 'airbnb' && !(PAGE === 'service' && SVC_ID === 'airbnb')) { location.href = svcHref('airbnb', 'private'); return; }
   state.type = t; state.touched = true; track('calc_type', { type: t });
   if (t === 'windows' || t === 'deep') state.win.sides = 2;
   if (t === 'general' || t === 'moveout') state.win.sides = 1;
