@@ -1647,3 +1647,35 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
   .cs h3 { font-size: 22px; }
   .cs .btn-blue { width: 100%; justify-content: center; min-height: 48px; }
 }
+
+/* ═════════ Round 15: object pages with their own calculator (shops, restaurants, professional kitchens) ═════════ */
+.bs-hint { margin: 6px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.bs-hint.warn { margin-top: 8px; color: #7A4B00; background: #FFF8EC; border-radius: 10px; padding: 7px 10px; }
+.area-big input#bsArea { width: 62px; }
+.calc.v2 .p-value.rg { font-size: 34px; }
+.calc.v2 .p-value.rg .rgv, .calc.v2 .p-value.rg .per { white-space: nowrap; }
+.calc.v2 .freqs .chip, .calc.v2 .opts .tchip { min-height: 34px; }
+.calc.v2.solo .q { margin: 13px 0 7px; }
+/* what is counted separately / where the neighbouring service lives — a quiet strip under the checklist */
+.incl-info { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin-top: 14px; background: #fff; border-radius: 20px; padding: 14px 18px; }
+.incl-info .oi { width: 36px; height: 36px; flex: none; border-radius: 10px; background: var(--tint); padding: 4px; }
+.incl-info p { flex: 1 1 320px; margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--ink2); }
+.incl-info p b { color: var(--ink); }
+.incl-info .btn-ghost { flex: none; }
+/* the general cleaning of a kitchen stands apart from the regular checklist */
+.gen-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 16px 36px; align-items: center; margin-top: 14px; background: #fff; border: 1.5px solid #CFE0F7; border-radius: 22px; padding: 20px 22px; }
+.gen-card h3 { display: flex; align-items: center; gap: 10px; font: 800 18px Montserrat, sans-serif; margin: 0 0 6px; }
+.gen-card h3 .oi { width: 36px; height: 36px; flex: none; border-radius: 10px; background: var(--tint); padding: 4px; }
+.gen-card p { margin: 0; font-size: 14.5px; color: var(--ink2); }
+.gen-card ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; font-size: 14px; }
+.gen-card li { display: flex; gap: 8px; line-height: 1.35; }
+.gen-card li .ck { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--green); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 800; margin-top: 1px; }
+.gen-side { display: grid; gap: 10px; justify-items: start; }
+.gen-side p { font-size: 13.5px; color: var(--muted); }
+@media (max-width: 800px) {
+  .gen-card { grid-template-columns: 1fr; padding: 18px; }
+  .gen-card ul { grid-template-columns: 1fr; }
+  .incl-info { padding: 14px 16px; }
+  .incl-info .btn-ghost { width: 100%; justify-content: center; }
+}
+@media (max-width: 480px) { .calc.v2 .p-value.rg { font-size: 29px; } }
