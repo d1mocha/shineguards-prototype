@@ -1764,3 +1764,11 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 .cs-side li { display: flex; gap: 8px; line-height: 1.4; }
 .cs-side li::before { content: "✓"; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--green); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
 @media (max-width: 980px) { .cs.text { grid-template-columns: 1fr; grid-template-areas: "body" "side" "act"; grid-template-rows: auto; row-gap: 16px; } .cs.text .cs-act .btn-blue { margin-top: 0; } }
+
+/* ═════════ Round 17: hotels page calculator (apartments / apart-hotel / hotel), offices by area ═════════ */
+.optcards.col { grid-template-columns: 1fr; gap: 6px; }
+.optcards.col .optcard { display: grid; grid-template-columns: minmax(0, 1fr); padding: 8px 11px; }
+.apt-common { margin-top: 12px; padding: 4px 10px 8px; border: 1.5px solid var(--line); border-radius: 12px; }
+.apt-common .q { margin: 8px 0 6px; font-size: 14px; }
+.incl-info p a { color: var(--blue); font-weight: 600; text-decoration: none; }
+.incl-info p a:hover { text-decoration: underline; }

@@ -56,8 +56,8 @@ BUSINESS = {
 # Business objects — own pages, as on shineguards.com: /{city}/ua/locations/{slug}-in-{city}
 OBJECTS = {
     #               slug                                          title (city follows)                description ({loc} = у Відні…)
-    'hotels':      ('goteli-apartamenti-ta-airbnb',              'Прибирання готелів і Airbnb',      'Прибирання готелів, апартаментів та Airbnb у {loc}: свіжа білизна, поповнення розхідників, фотозвіт після кожного гостя. Ціна за виїзд, знижка до 10% від 5 обʼєктів.'),
-    'offices':     ('ofisi-ta-kovorkingi',                       'Прибирання офісів і коворкінгів',  'Прибирання офісів і коворкінгів у {loc}: до або після робочого дня, закріплена команда, договір і документи. Пропозиція за 24 години.'),
+    'hotels':      ('goteli-apartamenti-ta-airbnb',              'Прибирання готелів і Airbnb',      'Прибирання апартаментів, Airbnb і готелів у {loc}: між гостями та під час проживання, заміна білизни, витратні матеріали, фото до/після й повідомлення про пошкодження. Пропозиція за 24 години.'),
+    'offices':     ('ofisi-ta-kovorkingi',                       'Прибирання офісів у {loc}',        'Регулярне прибирання офісів і коворкінгів у {loc}: до або після робочого дня, закріплена команда, договір. Комерційна пропозиція за 24 години.'),
     'shops':       ('magazini-butiki-ta-shourumi',               'Прибирання магазинів і шоурумів',  'Прибирання магазинів, бутиків і шоурумів у {loc}: торговий зал, вітрини, дзеркала, примірочні та службові зони — до відкриття або після закриття.'),
     'restaurants': ('restorani-kafe-ta-bari',                    'Прибирання ресторанів і кафе',     'Прибирання ресторанів, кафе та барів у {loc}: зал, бар, санвузли, службові зони та кухня — увесь заклад або окремі зони. Пропозиція за 24 години.'),
     'kitchens':    ('profesijni-kuhni-ta-gastronomiya',          'Прибирання професійних кухонь',    'Прибирання професійних кухонь у {loc}: регулярне та генеральне, знежирення обладнання й плит — з урахуванням вимог HACCP.'),
@@ -123,7 +123,9 @@ def business_seo(svc, city):
 def object_seo(obj, city):
     name, loc, _, _ = CITIES[city]
     _, title, desc = OBJECTS[obj]
-    return (f'{title} {name} | Shine Guards', desc.format(loc=loc))
+    # a title with {loc} reads «… у Відні», the rest keep the «… Відень» form
+    head = title.format(loc=loc) if '{loc}' in title else f'{title} {name}'
+    return (f'{head} | Shine Guards', desc.format(loc=loc))
 
 
 def home_seo(city):
