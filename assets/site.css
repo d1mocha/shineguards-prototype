@@ -1772,3 +1772,9 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 .apt-common .q { margin: 8px 0 6px; font-size: 14px; }
 .incl-info p a { color: var(--blue); font-weight: 600; text-decoration: none; }
 .incl-info p a:hover { text-decoration: underline; }
+
+/* Round 18: common areas of an apart-hotel — a separate monthly line under the price of one cleaning */
+.apt-cm { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #D5DEE9; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.apt-cm span b { display: block; color: var(--ink); font-size: 13.5px; }
+.apt-cm > b { flex: none; font: 800 17px/1.2 Montserrat, sans-serif; color: var(--ink); text-align: right; white-space: nowrap; }
+.apt-cm > b small { display: block; font: 600 12px Inter, sans-serif; color: var(--muted); }

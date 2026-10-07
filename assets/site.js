@@ -220,11 +220,20 @@ function aptCalc(withVat) {
     const i = APT.tiers.findIndex((m) => r.sqm <= m), baseN = APT[sk ? 'sk' : 'at'][i] * ct.k;
     return { sqm: r.sqm, n: r.n, tier: APT.labels[i], base: baseN * (1 + vat), each: (baseN * (1 + sur - d) + linen) * (1 + vat) };
   });
-  // an apart-hotel is apartments plus common areas, counted by their area at the business hourly rate
-  const common = a.kind === 'aparthotel' && a.common && !sk ? a.commonArea / HOSP.common.norm * BIZ.rate * (1 + vat) : 0;
-  const total = rows.reduce((t, r) => t + r.each * r.n, 0) + common;
-  return { apt: true, rows, N, disc: d, sur, ctype: ct, common, commonArea: a.commonArea, price: total, total, tier: rows[0].tier, base: rows[0].base, net: total / (1 + vat) };
+  // an apart-hotel is apartments plus common areas; those are cleaned every day, so they are a separate monthly sum
+  // (a range: the norm is an estimate) and never a part of the price of one cleaning
+  const cm = a.kind === 'aparthotel' && a.common && !sk ? a.commonArea / HOSP.common.norm * BIZ.rate * 7 * BIZ.weeks * (1 + vat) : 0;
+  const commonMonth = cm ? BIZ_SOLO_RANGE.map((f) => Math.round(cm * f / 10) * 10) : null;
+  const total = rows.reduce((t, r) => t + r.each * r.n, 0);
+  return { apt: true, rows, N, disc: d, sur, ctype: ct, commonMonth, commonArea: a.commonArea, price: total, total, tier: rows[0].tier, base: rows[0].base, net: total / (1 + vat) };
 }
+// Carpets: the flat price of a small one equals about 8 m² at the price by the m² (130 € ≈ 8 × 16 €), so «small» is
+// up to that size; a bigger carpet is counted by its area and never costs less than the small one
+const carpetSmall = (r = R()) => Math.round(r.rug / r.carpet[0]);
+const carpetRate = (m2, r = R()) => (m2 <= 10 ? r.carpet[0] : m2 <= 15 ? r.carpet[1] : r.carpet[2]);
+const carpetPrice = (m2, r = R()) => (m2 ? Math.max(r.rug, m2 * carpetRate(m2, r)) : 0);
+const carpetLbl = (m2, r = R()) => (!m2 ? 'не потрібно' : m2 <= carpetSmall(r) ? `до ${carpetSmall(r)} м² · ${eur(r.rug)}` : `${m2} м² · ${eur(carpetPrice(m2, r))}`);
+const carpetTiers = (r = R()) => `до ${carpetSmall(r)} м² — ${eur(r.rug)} · до 10 м² — ${r.carpet[0]} €/м² · 10–15 м² — ${r.carpet[1]} €/м² · від 15 м² — ${r.carpet[2]} €/м²`;
 const aptWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? 'апартамент' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'апартаменти' : 'апартаментів'; };
 function computePriv() {
   const city = CITIES[state.city], r = R();
@@ -277,13 +286,13 @@ function computePriv() {
       if (u.min) for (let i = 0; i < Math.min(q, 4); i++) chemUnits.push({ min: u.min, p });
     }
     if (state.rugs) {
-      out.lines.push({ name: `Маленькі килимки × ${state.rugs}`, price: state.rugs * r.rug }); out.extrasCount++;
+      out.lines.push({ name: `Килим до ${carpetSmall(r)} м² × ${state.rugs}`, price: state.rugs * r.rug }); out.extrasCount++;
       for (let i = 0; i < Math.min(state.rugs, 4); i++) chemUnits.push({ min: 30, p: r.rug });
     }
     if (state.carpet) {
-      const s = state.carpet, rate = s <= 10 ? r.carpet[0] : s <= 15 ? r.carpet[1] : r.carpet[2];
-      out.lines.push({ name: `Килим ${s} м² × ${rate} €/м²`, price: s * rate }); out.extrasCount++;
-      if (s <= 10) chemUnits.push({ min: 60, p: s * rate });
+      const s = state.carpet, price = carpetPrice(s, r);
+      out.lines.push({ name: s <= carpetSmall(r) ? `Килим до ${carpetSmall(r)} м²` : `Килим ${s} м² × ${carpetRate(s, r)} €/м²`, price }); out.extrasCount++;
+      if (s <= 10) chemUnits.push({ min: 60, p: price });
     }
     for (const m of MATTRESS) {
       const n = state.matt[m.id] || 0; if (!n) continue;
@@ -745,16 +754,17 @@ function chemWizard() {
       <div class="ctiles">${CHEM_CATS.map((c) => { const n = chemCount(c);
         return `<button type="button" class="ctile" data-chemcat="${c.id}" aria-pressed="${state.chemCats.has(c.id)}">${ic(c.icon)}<b>${c.name}</b><small>від ${eur(from[c.id])}${c.id === 'rugs' ? ' / м²' : ''}</small>${n ? `<span class="cnt">${n}</span>` : ''}</button>`; }).join('')}</div>`;
   } else {
-    const cs = state.carpet, rate = cs <= 10 ? r.carpet[0] : cs <= 15 ? r.carpet[1] : r.carpet[2];
+    const cs = state.carpet;
     body = CHEM_CATS.filter((c) => state.chemCats.has(c.id)).map((c) => {
       let list = '';
       if (c.items) list = c.items.map((id) => { const u = UPH.find((x) => x.id === id); return `<div class="row"><div class="nm">${u.name}<small>${eur(r.uph[id])}</small></div>${stepper('u:' + id, state.uph[id] || 0, 10)}</div>`; }).join('');
       else if (c.id === 'mat') list = `<div class="mats">${MATTRESS.map((m) => { const n = state.matt[m.id] || 0, p = state.mattBoth ? Math.round(m.p * 1.25) : m.p;
           return `<div class="mt ${n ? 'has' : ''}">${matIcon(m.w)}<b>${m.id.replace('x', ' × ')}</b><small>${eur(p)}</small>${stepper('m:' + m.id, n, 6)}</div>`; }).join('')}</div>
         <div style="margin-top:6px">${checkrow('mboth', state.mattBoth, 'Чистити з обох боків', 'для плям і запахів', '+25%')}</div>`;
-      else list = `<div class="row"><div class="nm">Маленькі килимки<small>біля ліжка, на кухні, до ≈ 5–7 м² · ${eur(r.rug)} / шт</small></div>${stepper('rugs', state.rugs, 10)}</div>
-        <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Великий килим<b class="num" id="carpetLbl">${cs ? cs + ' м² · ' + eur(cs * rate) : 'не потрібно'}</b></div>
-          <input type="range" id="carpetRange" min="0" max="40" value="${cs}" style="--p:${cs / 40 * 100}%" aria-label="Площа килима" /></div>`;
+      else list = `<div class="row"><div class="nm">Килим до ${carpetSmall(r)} м²<small>біля ліжка, на кухні · ${eur(r.rug)} / шт</small></div>${stepper('rugs', state.rugs, 10)}</div>
+        <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Більший килим — за площею<b class="num" id="carpetLbl">${carpetLbl(cs, r)}</b></div>
+          <input type="range" id="carpetRange" min="0" max="40" value="${cs}" style="--p:${cs / 40 * 100}%" aria-label="Площа килима" />
+          <small class="muted" style="font-size:13px">${carpetTiers(r)}</small></div>`;
       return `<div class="cgroup"><h4>${ic(c.icon)}${c.name}</h4>${list}</div>`;
     }).join('') + `<details class="how"><summary>Які тканини чистимо?</summary><div class="how-b">${FABRIC_HTML}</div></details>`;
   }
@@ -770,7 +780,7 @@ function aptInputsB(sk, n) {
     // the kind of cleaning sets the price: between guests, after a long stay, or a lighter one during the stay
     + qLabel(n + 1, 'Яке прибирання потрібне?') + `<div class="optcards col">${HOSP.types.map((t) => `<button type="button" class="optcard" data-hosp="ctype:${t.id}" aria-pressed="${a.ctype === t.id}"><b>${t.name}</b><small>${t.sub}</small></button>`).join('')}</div>`
     // an apart-hotel differs from apartments by its common areas only
-    + (a.kind === 'aparthotel' ? `<div class="apt-common">${checkrow('a:common', a.common, 'Прибирання загальних зон', 'хол, коридори, сходи', '')}${a.common ? `<div class="q"><span class="qt">Площа загальних зон</span><span class="val-big num" id="aptCommonVal">${a.commonArea} м²</span></div>
+    + (a.kind === 'aparthotel' ? `<div class="apt-common">${checkrow('a:common', a.common, 'Прибирання загальних зон', 'хол, коридори, сходи — щодня, окремою сумою на місяць', '')}${a.common ? `<div class="q"><span class="qt">Площа загальних зон</span><span class="val-big num" id="aptCommonVal">${a.commonArea} м²</span></div>
         <input type="range" id="aptCommon" min="${hc.min}" max="${hc.max}" step="5" value="${a.commonArea}" style="--p:${pct}%" aria-label="Площа загальних зон, м²" />${sk ? '<p class="bs-hint">Вартість прибирання загальних зон у Братиславі розрахує менеджер.</p>' : ''}` : ''}</div>` : '')
     + (P() ? moreBtn('aptMore', `Опції: хімія, білизна, терміново${opts ? ` · обрано ${opts}` : ''}`, state.ui.aptMore) : '<div class="sub-l">Додаткові опції</div>')
     + (!P() || state.ui.aptMore ? `<div class="opts" style="margin-top:6px">${tchip('a:chem', a.chem, 'Наша хімія та інвентар', P() ? '+8%' : '')}${tchip('a:linen', a.linen, 'Доставка білизни', P() ? `+${APT.linen[sk ? 'sk' : 'at']} €` : '')}${tchip('a:urgent', a.urgent, 'Терміново, день у день', P() ? '+20%' : '')}</div>` : '');
@@ -790,12 +800,12 @@ function hospInputs() {
 function aptOutHTML(c, withVat) {
   const ctry = country(), low = (x) => x.charAt(0).toLowerCase() + x.slice(1);
   const tax = ctry === 'sk' ? 'Фінальна ціна' : withVat ? 'Ціна з ПДВ' : `Ціна netto + ${CTRY[ctry].pct} ПДВ`;
-  const lines = c.rows.map((r) => `<div class="ln"><span>${r.n} × ${r.sqm} м²</span><span>${eur2(r.each)} за прибирання</span></div>`).join('')
-    + (c.common ? `<div class="ln"><span>Загальні зони · ${c.commonArea} м²</span><span>${eur2(c.common)}</span></div>` : '');
+  const lines = c.rows.map((r) => `<div class="ln"><span>${r.n} × ${r.sqm} м²</span><span>${eur2(r.each)} за прибирання</span></div>`).join('');
   return `<div class="price-box"><div class="p-label">${c.N > 1 ? `За прибирання всіх ${c.N} ${aptWord(c.N)}` : 'За одне прибирання'}${c.ctype ? ` · ${low(c.ctype.name)}` : ''}</div>
     <div class="p-row"><div class="p-value num"><span id="pNum" data-v="">${eur2(c.total)}</span></div><div class="p-meta">${c.disc ? '<span class="ok-t">✓ обʼємна ставка</span>' : ''}</div></div>
-    ${c.N > 1 || c.common ? `<div class="apt-lines">${lines}</div>` : ''}
-    <div class="p-sub">${tax} · чек-лист, заміна білизни, поповнення розхідників, фото до/після</div></div>`;
+    ${c.N > 1 ? `<div class="apt-lines">${lines}</div>` : ''}
+    <div class="p-sub">${tax} · чек-лист, заміна білизни, поповнення розхідників, фото до/після</div>
+    ${c.commonMonth ? `<div class="apt-cm"><span><b>Загальні зони · ${c.commonArea} м²</b>щоденне прибирання, окремо від апартаментів</span><b class="num">≈ ${soloRange({ range: c.commonMonth })}<small> ${withVat ? '' : 'netto '}/ місяць</small></b></div>` : ''}</div>`;
 }
 /* A separate order below the minimum: the sum to pay is the minimum, said in plain words, with what else fits into it.
    The client never sees «40 €» as a total and «108 €» in the bill. */
@@ -1118,12 +1128,12 @@ function extrasHTML() {
     ${t === 'deep' ? `<p class="note" style="margin-top:0">${GIFT_SVG} До 1 години хімчистки — у подарунок до глибокого прибирання. Це час роботи, а не чистка будь-якого дивана повністю: калькулятор сам відніме вартість того, що вкладається в годину.</p>` : ''}
     ${UPH.map((u) => `<div class="row"><div class="nm">${u.name}<small>${eur(r.uph[u.id])}</small></div>${stepper('u:' + u.id, state.uph[u.id] || 0, 10)}</div>`).join('')}
     <div class="sub-l">Які тканини чистимо</div>${FABRIC_HTML}</div></details>`;
-  const cs = state.carpet, rate = cs <= 10 ? r.carpet[0] : cs <= 15 ? r.carpet[1] : r.carpet[2];
-  h += `<details class="grp" name="drg" data-g="rugs" ${open('rugs')}><summary>${ic('rug')}Килими ${tag(state.rugs * r.rug + cs * rate)} ${chev}</summary><div class="in">
-    <div class="row"><div class="nm">Маленькі килимки<small>біля ліжка, на кухні, до ≈ 5–7 м² · ${eur(r.rug)} / шт</small></div>${stepper('rugs', state.rugs, 10)}</div>
-    <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Великий килим<b class="num" id="carpetLbl">${cs ? cs + ' м² · ' + eur(cs * rate) : 'не потрібно'}</b></div>
+  const cs = state.carpet;
+  h += `<details class="grp" name="drg" data-g="rugs" ${open('rugs')}><summary>${ic('rug')}Килими ${tag(state.rugs * r.rug + carpetPrice(cs, r))} ${chev}</summary><div class="in">
+    <div class="row"><div class="nm">Килим до ${carpetSmall(r)} м²<small>біля ліжка, на кухні · ${eur(r.rug)} / шт</small></div>${stepper('rugs', state.rugs, 10)}</div>
+    <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Більший килим — за площею<b class="num" id="carpetLbl">${carpetLbl(cs, r)}</b></div>
       <input type="range" id="carpetRange" min="0" max="40" value="${cs}" style="--p:${cs / 40 * 100}%" aria-label="Площа килима" />
-      <small class="muted" style="font-size:13px">до 10 м² — ${r.carpet[0]} €/м² · 10–15 м² — ${r.carpet[1]} €/м² · від 15 м² — ${r.carpet[2]} €/м²</small></div></div></details>`;
+      <small class="muted" style="font-size:13px">${carpetTiers(r)}</small></div></div></details>`;
   h += `<details class="grp" name="drg" data-g="mat" ${open('mat')}><summary>${ic('mattress')}Матраци ${tag(lineSum(/^Матрац/))} ${chev}</summary><div class="in">
     <p class="note" style="margin-top:0">Оберіть розмір і кількість — ширина × довжина, см.</p>
     <div class="mats">${MATTRESS.map((m) => { const n = state.matt[m.id] || 0, p = state.mattBoth ? Math.round(m.p * 1.25) : m.p;
@@ -1434,7 +1444,7 @@ function pricesHTML() {
   const line = (name, price, ctl = '', sub = '') => `<div class="pline"><span class="pn">${name}${sub ? `<small>${sub}</small>` : ''}</span><b>${price}</b>${ctl}</div>`;
   const card = (id, icn, title, body, extra = '') => `<div class="pcard" id="${id}"><div class="pc-head"><h3>${ic(icn)}${title}</h3>${extra}</div>${body}</div>`;
   const mp = (m) => state.mattBoth ? Math.round(m.p * 1.25) : m.p;
-  const cs = state.carpet, rate = cs <= 10 ? r.carpet[0] : cs <= 15 ? r.carpet[1] : r.carpet[2];
+  const cs = state.carpet, small = carpetSmall(r);
   const minMin = Math.round(r.minVisit / r.hourly * 12) * 5; // how long the minimum order lasts at the hourly rate
   return `<div class="prices act">
     ${card('kitchen', 'oven', 'Техніка та балкон', FLAT.map((x) => line(x.name, eur(x.price), tg(x.id), x.d)).join(''))}
@@ -1442,9 +1452,9 @@ function pricesHTML() {
     ${card('hcl', 'clock', 'Погодинне прибирання', line('Година роботи одного клінера', `${dec(r.hourly)} €`, qty('hc', state.hcl, 12, 'год'))
       + `<p class="pc-note">${SOLO_PAGE.extras.hourly}</p><p class="pc-note">Мінімальне замовлення — ${eur(r.minVisit)}: це близько ${Math.floor(minMin / 60)} год ${minMin % 60} хв роботи.</p>`)}
     ${card('chem', 'sofa', 'Хімчистка мʼяких меблів', UPH.map((u) => line(u.name, eur(r.uph[u.id]), qty('u:' + u.id, state.uph[u.id] || 0, 10))).join(''))}
-    ${card('rugs', 'rug', 'Килими', line('Маленький килимок', `${eur(r.rug)} / шт`, qty('rugs', state.rugs, 10), 'біля ліжка чи на кухні, орієнтовно до 5–7 м²')
-      + line('Великий килим до 10 м²', `${r.carpet[0]} € / м²`) + line('Великий килим 10–15 м²', `${r.carpet[1]} € / м²`) + line('Великий килим від 15 м²', `${r.carpet[2]} € / м²`)
-      + `<button type="button" class="pc-tg pc-wide" data-xgo="rugs" aria-pressed="${!!cs}">${cs ? `✓ Великий килим ${cs} м² · ${eur(cs * rate)} — змінити` : 'Вказати площу великого килима'}</button>`)}
+    ${card('rugs', 'rug', 'Килими', line(`Килим до ${small} м²`, `${eur(r.rug)} / шт`, qty('rugs', state.rugs, 10), 'біля ліжка, на кухні — фіксована ціна')
+      + line(`Килим ${small}–10 м²`, `${r.carpet[0]} € / м²`) + line('Килим 10–15 м²', `${r.carpet[1]} € / м²`) + line('Килим від 15 м²', `${r.carpet[2]} € / м²`)
+      + `<button type="button" class="pc-tg pc-wide" data-xgo="rugs" aria-pressed="${!!cs}">${cs ? `✓ Килим: ${carpetLbl(cs, r)} — змінити` : 'Вказати площу більшого килима'}</button>`)}
     ${card('mat', 'mattress', 'Матраци', MATTRESS.map((m) => line(m.id.replace('x', ' × ') + ' см', eur(mp(m)), qty('m:' + m.id, state.matt[m.id] || 0, 6))).join('')
       + '<p class="pc-note">З обох боків — +25%: радимо для плям і запахів. Матрац висихає 6–12 годин.</p>',
       `<span class="pc-seg" role="group" aria-label="Скільки сторін чистити">${[[0, '1 сторона'], [1, '2 сторони']].map(([v, l]) => `<button type="button" class="chip" data-mside="${v}" aria-pressed="${!!state.mattBoth === !!v}">${l}</button>`).join('')}</span>`)}
@@ -2226,7 +2236,7 @@ function summaryLines(c) {
   } else if (c.apt) {
     rows.push([`${state.apt.kind === 'aparthotel' ? 'Апарт-готель' : 'Апартаменти / Airbnb'} · ${c.ctype.name.charAt(0).toLowerCase() + c.ctype.name.slice(1)}`, '']);
     c.rows.forEach((r) => rows.push([`Апартаменти ${r.sqm} м² × ${r.n}`, eur2(r.each * r.n)]));
-    if (c.common) rows.push([`Загальні зони · ${c.commonArea} м²`, eur2(c.common)]);
+    if (c.commonMonth) rows.push([`Загальні зони · ${c.commonArea} м² · щодня`, `≈ ${soloRange({ range: c.commonMonth })} / міс`]);
     if (c.disc) rows.push(['Застосовано обʼємну ставку', '✓']);
     rows.push(['<b>За одне прибирання</b>', `<b>${eur2(c.price)}</b>`]);
   } else if (c.win) {
@@ -2389,8 +2399,7 @@ document.addEventListener('input', (e) => {
   } else if (t.id === 'carpetRange') {
     state.carpet = +t.value; state.touched = true;
     t.style.setProperty('--p', (state.carpet / 40 * 100) + '%');
-    const r = R(), rate = state.carpet <= 10 ? r.carpet[0] : state.carpet <= 15 ? r.carpet[1] : r.carpet[2];
-    $('#carpetLbl').textContent = state.carpet ? `${state.carpet} м² · ${eur(state.carpet * rate)}` : 'не потрібно';
+    $('#carpetLbl').textContent = carpetLbl(state.carpet);
     paintOut();
   }
 });
