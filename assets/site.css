@@ -1679,3 +1679,88 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
   .incl-info .btn-ghost { width: 100%; justify-content: center; }
 }
 @media (max-width: 480px) { .calc.v2 .p-value.rg { font-size: 29px; } }
+
+/* ═════════ Round 16: separate services (no cleaning) — the minimum order made visible; real client cases ═════════ */
+.xs-min { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 9px 12px; border-radius: 12px; background: #FFF8EC; color: #7A4B00; font-size: 13px; line-height: 1.4; }
+.xs-min .oi { width: 22px; height: 22px; flex: none; }
+.xs-min b { color: #5C3900; }
+.xs-list .grp { border: 1.5px solid var(--line); border-radius: 14px; margin-top: 8px; }
+.xs-list .grp[open] { border-color: #B7CBE3; }
+.xs-list .grp > summary { padding: 9px 12px; font-size: 14.5px; }
+.xs-list .grp > summary .oi { width: 30px; height: 30px; border-radius: 9px; }
+.xs-list .grp .in { padding: 0 12px 12px; }
+.xs-link { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 9px 12px; border: 1.5px dashed #B7CBE3; border-radius: 14px; text-decoration: none; color: var(--ink); }
+.xs-link:hover { border-style: solid; border-color: var(--blue); }
+.xs-link .oi { width: 30px; height: 30px; flex: none; }
+.xs-link span { flex: 1; line-height: 1.25; }
+.xs-link b { display: block; font-size: 14.5px; }
+.xs-link small { font-size: 12.5px; color: var(--muted); }
+.xs-link i { font-style: normal; font-weight: 600; font-size: 13px; color: var(--blue); white-space: nowrap; }
+/* below the minimum order: how much of it is used and what else fits into it */
+.xs-meter { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #FFF8EC; }
+.xs-bar { height: 8px; border-radius: 8px; background: #F3E3C3; overflow: hidden; }
+.xs-bar i { display: block; height: 100%; border-radius: 8px; background: var(--orange); }
+.xs-meter p { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: #5C3900; }
+.xs-sug { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: #7A4B00; }
+.xs-sug .chip { background: #fff; border-color: #EBD3A4; color: var(--ink); min-height: 32px; }
+.xs-sug .chip:hover { border-color: var(--orange); }
+.xs-lines { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #D5DEE9; font-size: 13.5px; }
+.xs-lines .ln { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+.xs-lines .ln.add { color: #9A4A00; }
+.xs-lines .ln.tot { margin-top: 5px; padding-top: 6px; border-top: 1px solid #E3EAF3; font-weight: 800; font-size: 15px; }
+.xs-alt { margin: 10px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.xs-alt a { color: var(--blue); font-weight: 600; text-decoration: none; white-space: nowrap; }
+/* the price list as an order form */
+.prices.act .pline { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px 10px; }
+.prices.act .pline > b:last-child { grid-column: 2 / 4; justify-self: end; }
+.pn { line-height: 1.3; }
+.pn small { display: block; color: var(--muted); font-size: 12.5px; }
+.pc-tg { border: 0; background: var(--blue-soft); color: var(--blue); font: 600 13px Inter, sans-serif; border-radius: 999px; padding: 6px 12px; min-width: 94px; min-height: 32px; cursor: pointer; white-space: nowrap; transition: background .2s, color .2s; }
+.pc-tg:hover { background: var(--blue); color: #fff; }
+.pc-tg[aria-pressed="true"] { background: var(--green-soft); color: #0F5132; }
+.pc-tg[aria-pressed="true"]:hover { background: var(--green); color: #fff; }
+.pc-q { display: inline-flex; align-items: center; gap: 6px; min-width: 94px; justify-content: flex-end; }
+.pc-q small { font-size: 12px; color: var(--muted); }
+.pc-q .stepper button { width: 28px; height: 30px; }
+.pc-q .stepper output { min-width: 22px; font-size: 14px; }
+.pc-note { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.pc-seg { margin-left: auto; display: inline-flex; gap: 4px; }
+.pc-seg .chip { padding: 4px 10px; font-size: 12.5px; }
+.pc-go { margin-top: 12px; }
+.pc-wide { width: 100%; margin-top: 12px; min-height: 40px; }
+.fb-ask { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #F0FDF4; border: 1px solid #BBF7D0; }
+.fb-ask > svg { width: 26px; height: 26px; flex: none; color: var(--wa); }
+.fb-ask p { flex: 1 1 240px; margin: 0; font-size: 14px; line-height: 1.4; }
+@media (min-width: 700px) { .pcard.wide { grid-column: span 2; } .pcard.wide .fabric { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* chosen services and the sum to pay stay in sight while the list is on screen */
+.ord { position: sticky; bottom: 14px; z-index: 40; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; margin-top: 16px; padding: 12px 14px 12px 18px; border-radius: 18px; background: var(--ink); color: #fff; box-shadow: 0 18px 36px -18px rgba(2,16,36,.6); }
+.ord[hidden] { display: none; }
+.ord-t { flex: 1 1 320px; display: grid; gap: 2px; }
+.ord-t b { font: 800 16px/1.25 Montserrat, sans-serif; }
+.ord-t span { font-size: 13.5px; line-height: 1.4; opacity: .88; }
+.ord-btn { flex: none; border: 0; background: var(--orange); color: #fff; font: 700 15px Inter, sans-serif; border-radius: 12px; padding: 12px 18px; min-height: 46px; cursor: pointer; white-space: nowrap; }
+.ord-btn:hover { background: var(--orange-dark); }
+@media (max-width: 700px) {
+  .ord { bottom: 10px; padding: 12px; }
+  .ord-btn { width: 100%; }
+  .fab.ordon { opacity: 0; transform: translateY(24px); pointer-events: none; }
+  .pc-head { flex-wrap: wrap; }
+}
+/* the case card shares its class name with the contact-strip links: take back what it must not get from them */
+article.cs { font-weight: 400; font-size: inherit; transition: none; }
+article.cs:hover { transform: none; border-color: #E3EAF3; }
+/* a case told in words (no photos yet): the facts on the left, the scope of work on the right */
+.cs.text { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "body side" "act side"; grid-template-rows: 1fr auto; row-gap: 0; align-items: stretch; }
+.cs.text .cs-body { grid-area: body; }
+.cs.text .cs-side { grid-area: side; }
+.cs.text .cs-act { grid-area: act; }
+.cs.text .cs-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cs-task { margin-top: 16px; }
+.cs-task p, .cs-note p { margin: 0; font-size: 14.5px; color: var(--ink2); }
+.cs-note { margin-top: 12px; padding: 11px 14px; border-radius: 14px; background: var(--green-soft); }
+.cs-note h4, .cs-note p { color: #0F5132; }
+.cs-side { background: #F6F9FD; border: 1px solid #E3EAF3; border-radius: 20px; padding: 18px 20px; }
+.cs-side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14.5px; }
+.cs-side li { display: flex; gap: 8px; line-height: 1.4; }
+.cs-side li::before { content: "✓"; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--green); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+@media (max-width: 980px) { .cs.text { grid-template-columns: 1fr; grid-template-areas: "body" "side" "act"; grid-template-rows: auto; row-gap: 16px; } .cs.text .cs-act .btn-blue { margin-top: 0; } }
