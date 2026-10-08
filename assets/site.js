@@ -54,7 +54,8 @@ const state = {
   touched: false,
   type: 'basic', sqm: 70, freq: 'once', planUp: null, move: 'out',
   flat: new Set(), hours: {}, uph: {}, rugs: 0, carpet: 0, matt: {}, mattBoth: false,
-  win: { single: 0, double: 0, door: 0, pano: 0, sides: 2, dirt: 'basic', high: false, blinds: 0, nets: 0, access: '' },
+  win: { single: 0, double: 0, door: 0, pano: 0, sides: 2, dirt: 'basic', high: false, blinds: 0, nets: 0, access: '',
+    boffice: 0, bdoor: 0, bshow: 0, bpano: 0, bpart: 0, facade: 0, regular: 'once', baccess: 'easy' }, // the b… keys: business glass
   biz: { obj: 'office', freq: 2, hours: 3, cleaners: 1, early: false, urgent: false, haccp: false, dirty: false, ownChem: false, winHours: 0 },
   apt: { rows: [{ sqm: 45, n: 1 }], chem: false, linen: false, urgent: false, kind: 'apt', ctype: 'short', common: false, commonArea: HOSP.common.def, rooms: 20, htype: 'both' },
   drOpen: new Set(['kitchen']), faqCat: 0, wipeBonus: false, caseIdx: 0, hcl: 0,
@@ -73,7 +74,8 @@ const PAGE_OBJ = PAGE === 'object' ? OBJECTS[SVC_ID] : null;
 // an object page with its own area-based calculator (shops, restaurants, professional kitchens)
 const SOLO_B = PAGE_OBJ && PAGE_OBJ.solo ? BIZ_SOLO[SVC_ID] : null;
 const SOLO_OBJ = !!(PAGE_OBJ && PAGE_OBJ.solo); // an object page with its own story (and its own calculator)
-if (SOLO_B) state.bs = { kind: 0, area: SOLO_B.area[3], time: SOLO_B.timeDef || 'before', glass: 'no', adds: new Set(), zones: new Set(SOLO_B.zones.map((z) => z.id)), ktype: 'regular', dirt: 'mid' };
+if (SOLO_B) state.bs = { kind: 0, area: SOLO_B.area[3], time: SOLO_B.timeDef || 'before', glass: 'no', adds: new Set(), zones: new Set(SOLO_B.zones.map((z) => z.id)), ktype: 'regular', dirt: 'mid',
+  counts: Object.fromEntries((SOLO_B.counts || []).map(([k, , n]) => [k, n])), flags: new Set() };
 
 /* ═════════ HELPERS ═════════ */
 const $ = (s, r = document) => r.querySelector(s);
@@ -190,21 +192,26 @@ const WIN_ICON = {
 const SPARK = `<svg viewBox="-12 -12 24 24" aria-hidden="true"><path class="spk" d="M0 -11C1.5 -2.9 2.9 -1.5 11 0C2.9 1.5 1.5 2.9 0 11C-1.5 2.9 -2.9 1.5 -11 0C-2.9 -1.5 -1.5 -2.9 0 -11Z" fill="url(#gSilver)" stroke="#9FBDD0"/></svg>`;
 
 /* ═════════ PRIVATE CALCULATION ═════════ */
+const winTypes = () => (P() ? WIN_TYPES : WIN_TYPES_BIZ);
+// minutes for one piece of glass: a partition is washed from both sides, and both of them are inside
+const winPer = (t, d, sides) => (t.inner ? t.frame * d.frame + t.glass * d.glass * 2 : t.frame * d.frame * (sides === 2 ? 1.5 : 1) + t.glass * d.glass * sides);
 function windowMinutes(sides) {
-  const w = state.win, d = WIN_DIRT[w.dirt];
+  const w = state.win, d = WIN_DIRT[w.dirt], biz = !P();
   let m = 0, sashes = 0;
-  for (const t of WIN_TYPES) {
+  for (const t of winTypes()) {
     const n = w[t.id]; if (!n) continue;
-    m += n * (t.frame * d.frame * (sides === 2 ? 1.5 : 1) + t.glass * d.glass * sides);
+    m += n * winPer(t, d, sides);
     sashes += n * t.sashes;
   }
+  if (biz && w.facade) m += w.facade * d.glass * sides * WIN_BIZ.facade.k; // big showcases and facades — by their area
   if (!m) return 0;
-  if (w.high) m *= 1.2;
-  m += Math.min(w.blinds, sashes) * 12.5 + Math.min(w.nets, sashes) * 10;
+  if (biz ? w.baccess === 'ladder' && sides === 2 : w.high) m *= 1.2;
+  if (!biz) m += Math.min(w.blinds, sashes) * 12.5; // for business blinds are a price per window, not minutes
+  m += Math.min(w.nets, sashes) * 10;
   return m + 15;
 }
-const winCount = () => WIN_TYPES.reduce((a, t) => a + state.win[t.id], 0);
-const winSashes = () => WIN_TYPES.reduce((a, t) => a + state.win[t.id] * t.sashes, 0);
+const winCount = () => winTypes().reduce((a, t) => a + state.win[t.id], 0);
+const winSashes = () => winTypes().reduce((a, t) => a + state.win[t.id] * t.sashes, 0);
 function winRange(minutes, rate, min = 0) {
   if (!minutes) return null;
   return { lo: Math.max(min, minutes / 60 * rate), hi: Math.max(min, (minutes + 15) / 60 * rate), upTo: minutes + 15 };
@@ -339,11 +346,12 @@ function computeBiz() {
   if (b.obj === 'other') return { ...base, request: 'other' };
   if (b.obj === 'apartments') { if (state.apt.kind === 'hotel') return { ...base, request: 'hotel' }; /* a hotel is priced by the manager */ const a = aptCalc(false); return a.aptBig ? { ...base, request: 'apt-big' } : { ...base, ...a, main: a.price }; }
   if (b.obj === 'windows') {
-    const m = windowMinutes(state.win.sides);
+    const w = state.win, hard = w.sides === 2 && w.baccess === 'high'; // a complex outer side is never priced automatically
+    const m = windowMinutes(hard ? 1 : w.sides);
     if (!m) return { ...base, winEmpty: true };
     const rate = sk ? 21.5 : BIZ.windowHour, min = sk ? 70 : BIZ.minOneOff;
-    const rg = winRange(ceil15(m), rate, min);
-    return { ...base, win: true, rate, range: [rg.lo, rg.hi], upTo: rg.upTo, main: rg.lo, minApplied: rg.lo === min };
+    const rg = winRange(ceil15(m), rate, min), blinds = Math.min(w.blinds, winCount()) * WIN_BIZ.blinds;
+    return { ...base, win: true, rate, min, hard, blinds, range: [rg.lo + blinds, rg.hi + blinds], upTo: rg.upTo, main: rg.lo + blinds, minApplied: rg.lo === min };
   }
   if (sk) return { ...base, request: 'sk-hourly' };
   const oneOff = b.freq === 0;
@@ -372,6 +380,7 @@ const soloRange = (c) => (c.range[0] === c.range[1] ? eur(c.range[0]) : `${Math.
 function computeBizSolo(id) {
   const cfg = SOLO_B, st = state.bs, b = state.biz, ctry = country();
   const base = { biz: true, solo: id, obj: b.obj, ctry, vat: CTRY[ctry].vat };
+  if (cfg.quote) return { ...base, request: 'quote' }; // clinics: the form collects the answers, the price comes after an inspection
   if (ctry === 'sk') return { ...base, request: 'sk-hourly' };
   const kt = soloType(), oneOff = !!kt && !kt.regular, perWeek = oneOff ? 0 : soloFreq();
   const zones = cfg.zones.filter((z) => st.zones.has(z.id));
@@ -380,7 +389,8 @@ function computeBizSolo(id) {
     const dirt = cfg.dirt.find(([k]) => k === st.dirt)[2], k = 1 + (dirt - 1) * (kt.dirtK == null ? 1 : kt.dirtK);
     hours = (kt.setup || 0) + st.area / kt.norm * zones.reduce((a, z) => a + z.share, 0) * k;
   } else {
-    const clean = zones.reduce((a, z) => a + st.area * z.share / z.norm, 0);
+    // the more often we come, the less there is to do per visit (gyms: zones are done by turns)
+    const clean = zones.reduce((a, z) => a + st.area * z.share / z.norm, 0) * ((cfg.freqK && cfg.freqK[perWeek]) || 1);
     const glass = cfg.glass && st.glass !== 'no' ? Math.max(cfg.glassMin, clean * cfg.glassK) : 0;
     hours = cfg.setup + clean + glass + (cfg.adds || []).reduce((a, [k, , h]) => a + (st.adds.has(k) ? h : 0), 0);
   }
@@ -518,8 +528,8 @@ const APPROX_NOTE = `<div class="approx"><svg width="16" height="16" viewBox="0 
 function windowsUI(ctx, compact) {
   const w = state.win, t = state.type;
   const generalOuter = ctx === 'drawer' && (t === 'general' || t === 'moveout');
-  let h = `<div class="wtypes">${WIN_TYPES.map((wt) => `
-      <div class="wt ${w[wt.id] ? 'has' : ''}">${WIN_ICON[wt.id]}<div><b>${wt.name}</b><small>${wt.size} · ${wt.sub}</small></div>${stepper('w:' + wt.id, w[wt.id], 40)}</div>`).join('')}</div>`;
+  let h = `<div class="wtypes">${winTypes().map((wt) => `
+      <div class="wt ${w[wt.id] ? 'has' : ''}">${WIN_ICON[wt.ico || wt.id]}<div><b>${wt.name}</b><small>${wt.size} · ${wt.sub}</small></div>${stepper('w:' + wt.id, w[wt.id], 40)}</div>`).join('')}</div>`;
   h += `<div class="sub-l">${generalOuter ? 'Мити також ззовні?' : 'Що миємо?'}</div><div class="optcards two">
       <button type="button" class="optcard" data-wopt="sides" data-v="1" aria-pressed="${w.sides === 1}"><b>${generalOuter ? 'Ні, лише зсередини' : 'Лише зсередини'}</b><small>${generalOuter ? (t === 'moveout' ? 'вже входить у прибирання' : 'вже входить у генеральне') : 'скло, рами, підвіконня'}</small></button>
       <button type="button" class="optcard" data-wopt="sides" data-v="2" aria-pressed="${w.sides === 2}"><b>Зсередини + ззовні</b><small>якщо є безпечний доступ</small></button></div>`;
@@ -681,12 +691,39 @@ function wzBar(step, labels, key, canNext) {
 const wzNav = (step, last, key, canNext, nextLabel = 'Далі') => `<div class="wz-nav">${step > 1 ? `<button type="button" class="wz-back" data-${key}="${step - 1}">← Назад</button>` : '<span></span>'}${step < last ? `<button type="button" class="wz-next" data-${key}="${step + 1}" ${canNext ? '' : 'disabled'}>${nextLabel} →</button>` : ''}</div>`;
 // can the outer side be reached safely? (asked when both sides are washed; goes to the manager with the request)
 const WIN_ACCESS = [['yes', 'Так', 'з балкона, з землі або стулки відчиняються'], ['inside', 'Тільки з квартири', 'дістатися можна лише зсередини'], ['ask', 'Потрібне уточнення', 'надішлю фото — підкажете']];
+/* Business glass: office windows, doors, showcases, facade sections, partitions; big facades by area; the outer side
+   only where it can be reached; how often — for the contract. */
+function windowsWizardBiz() {
+  const w = state.win, st = state.winStep, cnt = winCount(), any = cnt > 0 || w.facade > 0, fm = WIN_BIZ.facade.max;
+  let body = '';
+  if (st === 1) {
+    body = `<p class="wz-q">Яке скло потрібно помити?</p>
+      <div class="wrows">${WIN_TYPES_BIZ.map((t) => `<div class="wrow ${w[t.id] ? 'has' : ''}">${WIN_ICON[t.ico]}<div class="wr-t"><b>${t.name}</b><small>${t.size} · ${t.sub}</small></div>${stepper('w:' + t.id, w[t.id], 60)}</div>`).join('')}</div>
+      <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Великі вітрини або фасад — площею<b class="num" id="winFacadeLbl">${w.facade ? w.facade + ' м²' : 'немає'}</b></div>
+        <input type="range" id="winFacade" min="0" max="${fm}" step="5" value="${w.facade}" style="--p:${w.facade / fm * 100}%" aria-label="Площа великих вітрин або фасаду, м²" /></div>
+      <p class="wz-hint">Розміри приблизні — оберіть найближче. Великі фасади оцінюємо за фото або після огляду.</p>`;
+  } else if (st === 2) {
+    body = `<p class="wz-q">Що потрібно помити?</p><div class="optcards two">
+      <button type="button" class="optcard" data-wopt="sides" data-v="1" aria-pressed="${w.sides === 1}"><b>Лише зсередини</b><small>скло, рами, підвіконня</small></button>
+      <button type="button" class="optcard" data-wopt="sides" data-v="2" aria-pressed="${w.sides === 2}"><b>З обох боків</b><small>ззовні — за доступності</small></button></div>
+      ${w.sides === 2 ? `<p class="wz-q">Доступ до зовнішньої сторони</p><div class="optcards">${WIN_BIZ.access.map(([id, t, x]) => `<button type="button" class="optcard" data-wopt="baccess" data-v="${id}" aria-pressed="${w.baccess === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>
+        ${w.baccess === 'high' ? '<p class="bs-hint warn">Зовнішню сторону зі складним або висотним доступом оцінюємо окремо — у розрахунок входить миття зсередини.</p>' : ''}` : ''}
+      <p class="wz-q">Додатково <span>необовʼязково</span></p>
+      ${checkrow('w:blinds', w.blinds > 0, 'Жалюзі', `${WIN_BIZ.blinds} € netto за вікно`, '')}
+      ${w.blinds > 0 ? `<div class="subrow">На скількох вікнах? ${stepper('w:blinds', w.blinds, Math.max(cnt, 1), 1)}</div>` : ''}`;
+  } else {
+    body = `<p class="wz-q">Як часто потрібне миття?</p><div class="freqs">${WIN_BIZ.regular.map(([id, t]) => `<button type="button" class="chip" data-wopt="regular" data-v="${id}" aria-pressed="${w.regular === id}">${t}</button>`).join('')}</div>
+      <p class="wz-q">Наскільки брудні вікна?</p><div class="optcards">${Object.entries(WIN_DIRT).map(([k, dd]) => `<button type="button" class="optcard" data-wopt="dirt" data-v="${k}" aria-pressed="${w.dirt === k}"><b>${dd.name}</b><small>${dd.sub}</small></button>`).join('')}</div>`;
+  }
+  return wzBar(st, ['Скло і кількість', 'Сторони й доступ', 'Графік і стан'], 'wstep', any) + `<div class="wz-body">${body}</div>` + wzNav(st, 3, 'wstep', any, st === 2 ? 'Далі: графік і стан' : 'Далі');
+}
 function windowsWizard() {
+  if (!P()) return windowsWizardBiz();
   const w = state.win, st = state.winStep, cnt = winCount(), sashes = winSashes();
   let body = '';
   if (st === 1) {
     body = `<p class="wz-q">Які у вас вікна і скільки їх?</p>
-      <div class="wrows">${WIN_TYPES.map((t) => `<div class="wrow ${w[t.id] ? 'has' : ''}">${WIN_ICON[t.id]}<div class="wr-t"><b>${t.name}</b><small>${t.size} · ${t.sub}</small></div>${stepper('w:' + t.id, w[t.id], 40)}</div>`).join('')}</div>
+      <div class="wrows">${winTypes().map((t) => `<div class="wrow ${w[t.id] ? 'has' : ''}">${WIN_ICON[t.ico || t.id]}<div class="wr-t"><b>${t.name}</b><small>${t.size} · ${t.sub}</small></div>${stepper('w:' + t.id, w[t.id], 40)}</div>`).join('')}</div>
       <p class="wz-hint">Розміри приблизні — оберіть найближче. Точну суму підтвердимо за фото.</p>`;
   } else if (st === 2) {
     body = `<p class="wz-q">Що потрібно помити?</p><div class="optcards two">
@@ -709,29 +746,30 @@ function windowsWizard() {
 }
 // windows: the price is confirmed by photos — the estimate can go straight to WhatsApp, photos follow in the chat
 function waPhotoLink() {
-  const w = state.win, c = computePriv(), list = WIN_TYPES.filter((t) => w[t.id]).map((t) => `${w[t.id]} × ${t.name.toLowerCase()}`).join(', ');
+  const w = state.win, c = computePriv(), list = winTypes().filter((t) => w[t.id]).map((t) => `${w[t.id]} × ${t.name.toLowerCase()}`).join(', ');
   const txt = `Добрий день! Хочу помити вікна (${CITIES[state.city].name})${list ? `: ${list}; ${w.sides === 2 ? 'з обох боків' : 'лише зсередини'}${c.range ? `; орієнтовно ${rangeTxt(c.range)}` : ''}` : ''}. Надсилаю фото.`;
   return `<a class="cta-alt" href="${WA}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">${SOC.wa}або надіслати фото у WhatsApp</a>`;
 }
 const winAccessLine = () => state.type === 'windows' && state.win.sides === 2 && state.win.access ? `<div class="ln sm"><span>Доступ до зовнішньої сторони: ${WIN_ACCESS.find(([id]) => id === state.win.access)[1].toLowerCase()}</span></div>` : '';
 // Transparent estimate: time per window type × hourly rate
 function winBreakdownHTML(rate, min) {
-  const w = state.win, dd = WIN_DIRT[w.dirt], sides = w.sides;
-  const per = (t) => t.frame * dd.frame * (sides === 2 ? 1.5 : 1) + t.glass * dd.glass * sides;
-  const rows = WIN_TYPES.filter((t) => w[t.id]).map((t) => [`${w[t.id]} × ${t.name.toLowerCase()}`, w[t.id] * per(t)]);
+  const w = state.win, dd = WIN_DIRT[w.dirt], biz = !P(), hard = biz && w.sides === 2 && w.baccess === 'high', sides = hard ? 1 : w.sides;
+  const rows = winTypes().filter((t) => w[t.id]).map((t) => [`${w[t.id]} × ${t.name.toLowerCase()}`, w[t.id] * winPer(t, dd, sides)]);
+  if (biz && w.facade) rows.push([`Вітрини або фасад · ${w.facade} м²`, w.facade * dd.glass * sides * WIN_BIZ.facade.k]);
   if (!rows.length) return '';
   const base = rows.reduce((a, r) => a + r[1], 0), sash = winSashes();
   const extra = [];
-  if (w.high) extra.push(['Вікна вище 2 метрів', base * .2]);
-  if (w.blinds) extra.push([`Жалюзі · ${Math.min(w.blinds, sash)} шт`, Math.min(w.blinds, sash) * 12.5]);
+  if (biz ? w.baccess === 'ladder' && sides === 2 : w.high) extra.push([biz ? 'Робота з драбини' : 'Вікна вище 2 метрів', base * .2]);
+  if (!biz && w.blinds) extra.push([`Жалюзі · ${Math.min(w.blinds, sash)} шт`, Math.min(w.blinds, sash) * 12.5]);
   if (w.nets) extra.push([`Москітні сітки · ${Math.min(w.nets, sash)} шт`, Math.min(w.nets, sash) * 10]);
   extra.push(['Підготовка й інвентар', 15]);
-  const total = ceil15(windowMinutes(sides)), rg = winRange(total, rate, min);
+  const total = ceil15(windowMinutes(sides)), rg = winRange(total, rate, min), bl = biz ? Math.min(w.blinds, winCount()) * WIN_BIZ.blinds : 0;
   const ln = ([n, m]) => `<div class="ln"><span>${n}</span><span>≈ ${Math.round(m)} хв</span></div>`;
   return `<details class="how"><summary>Як ми рахуємо?</summary><div class="how-b">
-    <p>Рахуємо час роботи: рами й скло кожного вікна ${sides === 2 ? 'з обох боків' : 'зсередини'}, з урахуванням забруднення.</p>
+    <p>Рахуємо час роботи: рами й скло ${sides === 2 ? 'з обох боків' : 'зсередини'}, з урахуванням забруднення.</p>
     ${rows.map(ln).join('')}${extra.map(ln).join('')}
     <div class="ln tot"><span>≈ ${dur(total)}–${dur(total + 15)} × ${dec(rate)} € / год</span><span>${rangeTxt([rg.lo, rg.hi])}</span></div>
+    ${bl ? `<div class="ln"><span>Жалюзі · ${Math.min(w.blinds, winCount())} × ${WIN_BIZ.blinds} €</span><span>${eur(bl)}</span></div>` : ''}
     ${rg.lo === min ? `<p>Мінімальне замовлення — ${eur(min)}.</p>` : ''}</div></details>`;
 }
 const CHEM_CATS = [
@@ -885,21 +923,25 @@ const bsTog = (attr, id, on, label) => `<button type="button" class="tchip" ${at
 function bizSoloInputs() {
   const cfg = SOLO_B, st = state.bs, kt = soloType(), [aq, amin, amax] = cfg.area;
   let n = 0, h = `<div class="calc-svc"><b>${ic(cfg.icon)}${cfg.name}</b><a href="${homeHref('business')}#objects">Інший тип бізнесу</a></div>`;
-  if (country() === 'sk') return h + BIZ_NOTE_SK;
+  if (country() === 'sk' && !cfg.quote) return h + BIZ_NOTE_SK;
   if (cfg.kinds) h += qLabel(++n, cfg.kindQ) + `<div class="freqs">${cfg.kinds.map((k, i) => bsChip('kind', i, st.kind, k)).join('')}</div>`;
   if (cfg.types) h += qLabel(++n, 'Що потрібно?') + `<div class="optcards two">${cfg.types.map((t) => `<button type="button" class="optcard" data-bs="ktype:${t.id}" aria-pressed="${st.ktype === t.id}"><b>${t.name}</b><small>${t.sub}</small></button>`).join('')}</div>`;
   const rv = Math.min(amax, Math.max(amin, st.area)), pct = ((rv - amin) / (amax - amin) * 100).toFixed(1);
   h += qLabel(++n, aq, `<label class="area-big"><input id="bsArea" type="number" inputmode="numeric" min="5" max="${amax * 5}" value="${st.area}" aria-label="${aq}, м²" /><span>м²</span></label>`)
     + `<input type="range" id="bsRange" min="${amin}" max="${amax}" step="${amax > 300 ? 10 : 5}" value="${rv}" style="--p:${pct}%" aria-label="${aq}, м²" aria-valuetext="${st.area} квадратних метрів" />`
     + (cfg.areaHint ? `<p class="bs-hint">${cfg.areaHint}</p>` : '');
+  if (cfg.counts) h += qLabel(++n, cfg.countQ) + `<div class="bs-counts">${cfg.counts.map(([k, l, , max]) => `<div class="cl"><span>${l}</span>${stepper('bc:' + k, st.counts[k], max)}</div>`).join('')}</div>`;
   if (!kt || kt.regular) h += qLabel(++n, 'Скільки прибирань на тиждень?') + `<div class="freqs">${BIZ_SOLO_FREQ.map(([v, l]) => chip('data-bfreq', v, soloFreq(), l)).join('')}</div>`;
   if (cfg.times) h += qLabel(++n, 'Коли зручно прибирати?') + `<div class="freqs">${cfg.times.map(([k, l]) => bsChip('time', k, st.time, l)).join('')}</div>`;
-  if (cfg.glass) h += qLabel(++n, 'Потрібне регулярне миття вітрин?') + `<div class="freqs">${cfg.glass.map(([k, l]) => bsChip('glass', k, st.glass, l)).join('')}</div>${st.glass === 'both' ? `<p class="bs-hint warn">${cfg.glassNote}</p>` : ''}`;
+  if (cfg.glass) h += qLabel(++n, cfg.glassQ || 'Потрібне регулярне миття вітрин?') + `<div class="freqs">${cfg.glass.map(([k, l]) => bsChip('glass', k, st.glass, l)).join('')}</div>${st.glass === 'both' ? `<p class="bs-hint warn">${cfg.glassNote}</p>` : ''}`;
   if (cfg.dirt) h += qLabel(++n, 'Рівень забруднення') + `<div class="freqs">${cfg.dirt.map(([k, l]) => bsChip('dirt', k, st.dirt, l)).join('')}</div>`;
   if (cfg.zoneQ) {
     const all = cfg.zones.every((z) => st.zones.has(z.id));
-    h += qLabel(++n, cfg.zoneQ) + `<div class="opts">${cfg.all ? bsTog('data-bsz', 'all', all, cfg.all) : ''}${cfg.zones.map((z) => bsTog('data-bsz', z.id, st.zones.has(z.id) && !(cfg.all && all), z.name)).join('')}</div>`;
+    h += qLabel(++n, cfg.zoneQ) + `<div class="opts">${cfg.all ? bsTog('data-bsz', 'all', all, cfg.all) : ''}${cfg.zones.map((z) => bsTog('data-bsz', z.id, st.zones.has(z.id) && !(cfg.all && all), z.name)).join('')}</div>`
+      + cfg.zones.filter((z) => z.hint && st.zones.has(z.id)).map((z) => `<p class="bs-hint warn">${z.hint}</p>`).join(''); // what a chosen zone does not include
   }
+  if (cfg.flags) h += (cfg.flagQ ? qLabel(++n, cfg.flagQ) : '') + `<div class="opts${cfg.flagQ ? '' : ' bs-flags'}">${cfg.flags.map(([k, l]) => bsTog('data-bsf', k, st.flags.has(k), l)).join('')}</div>`
+    + cfg.flags.filter(([k, , x]) => x && st.flags.has(k)).map(([, , x]) => `<p class="bs-hint">${x}</p>`).join('');
   if (cfg.adds) h += qLabel(++n, 'Додаткові зони') + `<div class="opts">${cfg.adds.map(([k, l]) => bsTog('data-bsa', k, st.adds.has(k), l)).join('')}</div>`;
   if (cfg.haccp) h += `<div class="haccp">${tchip('b:haccp', state.biz.haccp, cfg.haccp, '')}</div>`;
   return h;
@@ -909,17 +951,21 @@ function soloAnswers(c) {
   const cfg = SOLO_B, st = state.bs, kt = soloType(), low = (x) => x.charAt(0).toLowerCase() + x.slice(1), rows = [];
   rows.push(`${kt ? `${kt.name} · кухня` : cfg.kinds[st.kind]} ${st.area} м²${c.oneOff ? '' : ` · ${soloFreqTxt()}`}`);
   if (cfg.times) rows.push(`Час прибирання: ${low(cfg.times.find(([k]) => k === st.time)[1])}`);
-  if (cfg.glass && st.glass !== 'no') rows.push(`Вітрини: ${low(cfg.glass.find(([k]) => k === st.glass)[1])}${st.glass === 'both' ? ' (зовнішня сторона — окремий розрахунок)' : ''}`);
+  if (cfg.counts) rows.push(cfg.counts.map(([k, l]) => `${l}: ${st.counts[k]}`).join(' · '));
+  if (cfg.glass && st.glass !== 'no') rows.push(`${cfg.glassLbl || 'Вітрини'}: ${low(cfg.glass.find(([k]) => k === st.glass)[1])}${st.glass === 'both' ? ' (зовнішня сторона — окремий розрахунок)' : ''}`);
   if (cfg.dirt) rows.push(`Забруднення: ${low(cfg.dirt.find(([k]) => k === st.dirt)[1])}`);
   if (cfg.zoneQ) { const on = cfg.zones.filter((z) => st.zones.has(z.id)); rows.push(`Зони: ${cfg.all && on.length === cfg.zones.length ? low(cfg.all) : on.map((z) => low(z.name)).join(', ')}`); }
   if (cfg.adds && st.adds.size) rows.push(`Додаткові зони: ${cfg.adds.filter(([k]) => st.adds.has(k)).map(([, l]) => low(l)).join(', ')}`);
   if (cfg.haccp && state.biz.haccp) rows.push('Є HACCP-план або таблиці контролю');
+  if (cfg.flags) cfg.flags.filter(([k]) => st.flags.has(k)).forEach(([, l]) => rows.push(l));
   return rows;
 }
 function bizSoloOut(c) {
   const cfg = SOLO_B;
   const foot = (label, extra = '') => `<button class="cta" type="button" data-open="book" id="ctaMain">${label}</button>${extra}<div class="cta-note"><span>Пропозиція протягом 24 годин</span><span class="live"><i class="dot"></i><span class="lt"></span></span></div>`;
   if (c.request === 'big') return `<div class="notice"><b>Великий обʼєкт — розрахуємо індивідуально</b>Для такого обсягу готуємо індивідуальну пропозицію після огляду обʼєкта.</div>${foot('Запросити огляд обʼєкта')}`;
+  if (c.request === 'quote') return `<div class="price-box"><div class="p-label">${cfg.name}</div><div class="p-value" style="font-size:28px">${cfg.quoteTitle}</div><div class="p-sub">${cfg.quoteText}</div>
+    <div class="incrow"><div class="head"><b>Як це працює</b></div><div class="pills">${cfg.quotePills.map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div></div></div>${foot('Отримати пропозицію')}`;
   if (c.request) return bizOut();
   const nb = (x) => x.replace(/ (€|\/)/g, '&nbsp;$1'); // «52 €» and «€ / год» never break across lines
   const sub = [c.oneOff ? '' : nb(`від ${dec(BIZ.rate)} € netto / год`) + ' при регулярному обслуговуванні', c.minApplied ? `мінімальна вартість візиту — ${nb(eur(c.min))}` : '', c.volume ? 'для такого обсягу підготуємо індивідуальну ставку' : ''].filter(Boolean);
@@ -944,6 +990,8 @@ function setBsArea(v, fromRange) {
 function bizInputsB() {
   if (bizSolo()) return bizSoloInputs();
   if (hospPage()) return hospInputs();
+  // the business windows page: only this service, a quiet way out to the rest
+  if (PAGE === 'service' && SVC_ID === 'windows') return `<div class="calc-svc"><b>${ic('window')}Миття вікон для бізнесу</b><a href="${homeHref('business')}">Інша послуга для бізнесу</a></div>` + windowsWizard();
   const b = state.biz, sk = country() === 'sk';
   let h = qLabel(1, 'Тип обʼєкта') + `<div class="objs">${BIZ_OBJ.map((o) => `<button type="button" class="obj" data-obj="${o.id}" aria-pressed="${b.obj === o.id}">${ic(o.icon)}${o.name}</button>`).join('')}</div>`;
   if (b.obj === 'restaurant') h += `<div class="haccp">${tchip('b:haccp', b.haccp, 'З урахуванням вимог HACCP', '')}</div>`;
@@ -966,10 +1014,17 @@ function bizOutB() {
   const c = computeBiz(), sk = c.ctry === 'sk', tax = sk ? 'Фінальна ціна' : 'Ціна netto', net = sk ? '' : ' netto';
   if (c.solo) return bizSoloOut(c);
   const note = '<p class="p-note">Орієнтовний розрахунок, не є комерційною пропозицією. Фінальна ставка — після огляду обʼєкта або погодження ТЗ.</p>';
-  const foot = (label) => `<button class="cta" type="button" data-open="book" id="ctaMain">${label}</button><div class="cta-note"><span>Пропозиція протягом 24 годин</span><span class="live"><i class="dot"></i><span class="lt"></span></span></div>`;
+  const foot = (label, extra = '') => `<button class="cta" type="button" data-open="book" id="ctaMain">${label}</button>${extra}<div class="cta-note"><span>Пропозиція протягом 24 годин</span><span class="live"><i class="dot"></i><span class="lt"></span></span></div>`;
   if (c.request || c.winEmpty) return bizOut();
   if (c.apt) return aptOutHTML(c, false).replace(/<\/div>$/, `${note}</div>`) + foot('Отримати пропозицію');
-  if (c.win) return `<div class="price-box"><div class="p-label">Орієнтовно · миття вікон</div><div class="p-row"><div class="p-value num">${rangeTxt(c.range)}</div></div><div class="p-sub">${tax}</div>${winBreakdownHTML(sk ? 21.5 : BIZ.windowHour, sk ? 70 : BIZ.minOneOff)}${note}</div>${foot('Отримати пропозицію')}`;
+  if (c.win) {
+    const w = state.win, reg = WIN_BIZ.regular.find(([k]) => k === w.regular)[1].toLowerCase();
+    const wa = `<a class="cta-alt" href="${waHref(`Добрий день! Потрібне миття вікон для бізнесу (${CITIES[state.city].name}). Надсилаю фото.`)}" target="_blank" rel="noopener">${SOC.wa}або надіслати фото у WhatsApp</a>`;
+    return `<div class="price-box"><div class="p-label">Орієнтовно за одне миття${w.regular === 'once' ? '' : ` · ${reg}`}</div><div class="p-row"><div class="p-value num">${rangeTxt(c.range)}</div></div>
+      <div class="p-sub">${tax} · ${dec(c.rate)} € / год · мінімальне замовлення ${eur(c.min)}</div>
+      ${c.hard ? '<p class="bs-hint warn">Зовнішню сторону зі складним або висотним доступом оцінюємо окремо — у суму входить миття зсередини.</p>' : ''}
+      ${winBreakdownHTML(c.rate, c.min)}${note}</div>${foot('Отримати пропозицію', wa)}`;
+  }
   const v = Math.round(c.oneOff ? c.perVisit : c.month);
   return `<div class="price-box"><div class="p-label">${c.oneOff ? 'Орієнтовно за прибирання' : 'Орієнтовно на місяць'}</div>
     <div class="p-row"><div class="p-value num">≈ <span id="pNum" data-v="${v}">${eur(v)}</span><span class="per">${net} / ${c.oneOff ? 'прибирання' : 'місяць'}</span></div></div>
@@ -1434,7 +1489,7 @@ function inclSec(s) {
   }
   return sec('incl', `Що входить у ${kind === 'business' ? 'послугу' : s.name.charAt(0).toLowerCase() + s.name.slice(1)}`, s.incl === 'tier' && TIER_RANK[s.calc.type] > 0 ? 'Синім позначено, що зʼявляється саме в цьому пакеті.' : '', body);
 }
-const inclGroups = (groups) => `<div class="incl-grid${groups.length === 4 ? ' c4' : ''}">${groups.map((g) => `<div class="incl-card pop"><h3>${g.icon ? ic(g.icon) : ''}${g.t}</h3><ul>${g.items.map((x) => `<li class="${/окремо|за запитом|додатков/i.test(x) ? 'opt' : ''}"><span class="ck">${/окремо|за запитом|додатков/i.test(x) ? '+' : '✓'}</span><span>${x}</span></li>`).join('')}</ul></div>`).join('')}</div>`;
+const inclGroups = (groups) => `<div class="incl-grid${groups.length === 4 ? ' c4' : ''}">${groups.map((g) => `<div class="incl-card pop"><h3>${g.icon ? ic(g.icon) : ''}${g.t}</h3><ul>${g.items.map((x) => { const opt = /окремо|за запитом|додатков/i.test(x); return `<li class="${g.add ? 'add' : opt ? 'opt' : ''}"><span class="ck">${g.add || opt ? '+' : '✓'}</span><span>${x}</span></li>`; }).join('')}</ul></div>`).join('')}</div>`;
 /* Separate services: every line of the price list is added with one tap («+ Додати» → «✓ Додано» or a counter),
    the bar under the list keeps the chosen services and the sum to pay. The same state as the calculator above. */
 function pricesHTML() {
@@ -1747,16 +1802,16 @@ function wipeReset() {
 const waHref = (text) => `${WA}?text=${encodeURIComponent(text)}`;
 const waRenoHref = () => waHref(`Добрий день! Потрібне прибирання після ремонту (${CITIES[state.city].name}). Надсилаю фото.`);
 function sideRequest() {
-  const biz = !P();
-  const steps = biz
+  const biz = !P(), own = biz && PAGE_SVC && PAGE_SVC.side; // a business service page may bring its own steps and button
+  const steps = own ? own.steps : biz
     ? [['Опишіть обʼєкт', 'тип, площа, бажаний графік'], ['Огляд або фото', 'менеджер приїде чи оцінить за фото'], ['Пропозиція за 24 години', 'з договором і документами']]
     : [['Надішліть фото', 'кімнати та масштаб робіт'], ['Отримайте орієнтовну оцінку', 'обсяг команди та бюджет'], ['Оберіть день', 'оплата за фактичний час']];
   return `<div class="side-card">
     <h2>${biz ? 'Розрахуємо під ваш обʼєкт' : 'Оцінимо прибирання за фото'}</h2>
-    <p class="muted">${biz ? 'Такі роботи рахуємо індивідуально — без шаблонних цін і доплат.' : 'Обсяг після ремонту дуже різний, тому вартість називаємо за фото, а не наосліп.'}</p>
+    <p class="muted">${own ? own.note : biz ? 'Такі роботи рахуємо індивідуально — без шаблонних цін і доплат.' : 'Обсяг після ремонту дуже різний, тому вартість називаємо за фото, а не наосліп.'}</p>
     <ol class="side-steps">${steps.map(([t, d], i) => `<li><span class="n">${i + 1}</span><span><b>${t}</b><small>${d}</small></span></li>`).join('')}</ol>
     ${biz
-      ? `<button type="button" class="cta" data-open="book" data-bizgoal="Комерційна пропозиція">Надіслати запит</button><button type="button" class="side-alt" data-open="book" data-bizgoal="Огляд обʼєкта">або запросити огляд обʼєкта</button>`
+      ? `<button type="button" class="cta" data-open="book" data-bizgoal="Комерційна пропозиція">${own ? own.btn : 'Надіслати запит'}</button><button type="button" class="side-alt" data-open="book" data-bizgoal="Огляд обʼєкта">або запросити огляд обʼєкта</button>`
       : `<p class="side-promise">Надішліть 5–10 фото або коротке відео — менеджер зорієнтує по вартості.</p><a class="cta wa-cta" href="${waRenoHref()}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото у WhatsApp</a><button type="button" class="side-alt" data-open="book">або залишити заявку — передзвонимо</button>`}
     <div class="cta-note"><span class="live"><i class="dot"></i><span class="lt"></span></span></div>
   </div>`;
@@ -1868,6 +1923,8 @@ function winPriceSec() {
   return sec('price', 'Як формується ціна', '', `<ol class="flow reveal">${sp.flow.map(([t, x], i) => `<li><span class="n">${i + 1}</span><span><b>${t}</b><small>${x}</small></span></li>`).join('')}</ol>
     <div class="principles when c3">${sp.terms.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${fill(t)}</h3><p>${fill(x)}</p></div>`).join('')}</div>`);
 }
+// apartments are priced per cleaning: netto with the VAT said next to it (Bratislava has no VAT); short facts — one line
+const aptFacts = (sk) => { const from = Math.floor(APT[sk ? 'sk' : 'at'][0]); return sk ? [['Ціна', `від ${from} € / прибирання`], ['Пропозиція', 'за 24 години']] : [['Ціна netto', `від ${from} € / прибирання`], ['ПДВ', `+ ${CTRY[country()].pct}`], ['Пропозиція', 'за 24 години']]; };
 function pageService() {
   const s = PAGE_SVC, kind = state.mode, c = CITIES[state.city], tier = ownTier();
   const crumbs = [['Головна', homeHref('private')], kind === 'private' ? ['Послуги для дому', listHref()] : ['Послуги для бізнесу', homeHref('business')], [s.name]];
@@ -1884,12 +1941,30 @@ function pageService() {
     if (SVC_ID === 'windows') facts.push(['Розрахунок', 'за 3 кроки'], ['Точна ціна', 'за фото']);
     if (SVC_ID === 'extras') facts.push(['Мінімальне замовлення', eur(R().minVisit)], ['Оплата', 'після прибирання']);
   } else {
-    facts = [['moveout', 'reno'].includes(SVC_ID) ? ['Ціна', 'після огляду'] : SVC_ID === 'airbnb' ? ['Ціна без ПДВ', `від ${eur2(APT[country() === 'sk' ? 'sk' : 'at'][0])} / апартамент`] : country() === 'sk' ? ['Ставка', 'за запитом'] : ['Ставка без ПДВ', 'від 27 € / год'], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']];
+    const sk = country() === 'sk';
+    facts = SVC_ID === 'windows' ? [[sk ? 'Ставка' : 'Ставка netto', `від ${dec(sk ? 21.5 : BIZ.windowHour)} € / год`], ['Мінімальне замовлення', eur(sk ? 70 : BIZ.minOneOff)], ['Пропозиція', 'за 24 години']] // one price everywhere on the page
+      : SVC_ID === 'reno' ? [['Вартість', 'після фото або огляду'], ['Пропозиція', 'за 24 години']] // two facts: the three do not fit in one line
+      : SVC_ID === 'airbnb' ? aptFacts(sk)
+      : [SVC_ID === 'moveout' ? ['Ціна', 'після огляду'] : country() === 'sk' ? ['Ставка', 'за запитом'] : ['Ставка без ПДВ', 'від 27 € / год'], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']];
   }
+  const trust = trustFor(kind, SVC_ID);
+  if (kind === 'business' && s.trust) trust[2] = [trust[2][0], s.trust];
   const requestOnly = (kind === 'private' && SVC_ID === 'reno') || (kind === 'business' && ['moveout', 'reno'].includes(SVC_ID));
   const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">у ${c.loc}</span>`, sub: s.sub, lead: s.lead, note: tier && PKG_GIFTS[tier] ? giftsRow(tier, 'hero-gifts pop') : '',
-    facts, trust: trustFor(kind, SVC_ID), side: requestOnly ? sideRequest() : null });
+    facts, trust, side: requestOnly ? sideRequest() : null });
   const faqTitle = `Питання про «${s.name.charAt(0).toLowerCase() + s.name.slice(1)}»`;
+  // business service with its own story (windows, post-renovation):
+  // what is included → how it is organised → how we do it → clients → the 24-hour offer → own questions → one more button → related B2B services
+  if (kind === 'business' && s.own) {
+    const info = (s.inclInfo || []).map(([icn, x]) => `<div class="incl-info reveal">${ic(icn)}<p>${x}</p></div>`).join('');
+    const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
+    return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
+      + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`)
+      + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
+      + `<section class="block" id="start"><div class="container"><div class="final-cta reveal"><div><h2>${s.final[0]}</h2><p>${s.final[1]}</p></div>
+          <div class="fc-btns">${cal ? `<button type="button" class="fc-btn home" data-tocalc>${CALC_SVG}${s.final[2]}</button>` : `<button type="button" class="fc-btn home" data-open="book" data-bizgoal="Комерційна пропозиція">${s.final[2]}</button>`}<a class="fc-btn biz" href="${waHref(s.waText)}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото</a></div></div></div></section>`
+      + relatedSec(kind, s.related);
+  }
   // package page: (when to choose it) → what is in it → the three side by side → how it goes → reviews → what next →
   // its own questions → one more button → other services
   if (tier) return hero + (TIER_PAGE[tier].when ? whenSec(tier) : '') + tierInclSec(tier) + compareSec() + stepsSec('private') + proofSec() + promoBannerHTML()
@@ -1917,6 +1992,7 @@ function pageService() {
 function promoBannerHTML() {
   const idx = P() ? (isRegType(SVC_ID) ? 0 : 1) : ({ airbnb: 1, klining: 0, basic: 0 }[SVC_ID] ?? 2);
   let p = PROMOS[state.mode][idx], btn = `<button type="button" class="pbtn" data-promo="${p.act}">${p.btn}</button>`;
+  if (!P() && PAGE === 'service' && SVC_ID === 'reno') p = { ...p, tag: 'Оцінка та пропозиція за 24 години' }; // not a «quick start»: first the estimate
   // general and deep are one-off jobs: there the regular discount is an offer to keep the result with the basic package
   const up = ownTier() && TIER_PAGE[SVC_ID].upsell;
   if (up) { p = { ...PROMOS.private[0], tag: up[0], t: up[1], d: up[2] }; btn = `<a class="pbtn" href="${svcHref('basic', 'private')}?freq=weekly">Розрахувати базове</a>`; }
@@ -2001,6 +2077,7 @@ function objInclSec(o) {
 function objFaq(o) {
   const sk = country() === 'sk';
   const vals = { vat: sk ? 'У Словаччині ми не є платниками ПДВ.' : 'Ціни для бізнесу вказані netto, без ПДВ.', kitchens: objHref('kitchens'),
+    bwrate: `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, bwmin: eur(sk ? 70 : BIZ.minOneOff),
     aptprice: `Прибирання між гостями — від ${Math.floor(APT[sk ? 'sk' : 'at'][0])} €${sk ? '' : ' netto'} за апартамент до 50 м².`,
     priceoffice: sk ? 'У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком робіт.' : `Орієнтовну місячну вартість одразу покаже калькулятор — за площею офісу та графіком; при регулярному обслуговуванні — від ${dec(BIZ.rate)} € netto за годину роботи клінера.`,
     price: sk ? 'У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком зон.' : `Регулярне обслуговування — від ${dec(BIZ.rate)} € netto за годину роботи клінера. Орієнтовну місячну вартість одразу покаже калькулятор — за площею, графіком і зонами.` };
@@ -2014,9 +2091,10 @@ function pageObject() {
   if (o.solo) {
     const trust = trustBiz(); trust[2] = [o.haccp ? TRUST_P[3][0] : trust[2][0], o.trust];
     if (o.trust0) trust[0] = [TRUST_P[1][0], o.trust0]; // the first-screen argument of the page (offices: the same team and a replacement)
-    const apt = o.calc.obj === 'apartments', from = Math.floor(APT[sk ? 'sk' : 'at'][0]);
+    const apt = o.calc.obj === 'apartments';
     // apartments are priced per cleaning (netto, the VAT said next to it), the rest — by the hourly rate of regular service
-    const facts = apt ? (sk ? [['Ціна', `від ${from} € / прибирання`], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']] : [['Ціна netto', `від ${from} € / прибирання`], ['ПДВ', `+ ${CTRY[country()].pct}`], ['Пропозиція', 'за 24 години']])
+    const facts = apt ? aptFacts(sk)
+      : SOLO_B && SOLO_B.quote ? [['Вартість', 'після огляду'], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']]
       : [sk ? ['Ставка', 'за запитом'] : ['Регулярно, netto', `від ${dec(BIZ.rate)} € / год`], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']];
     const keys = o.keys ? sec('keys', o.keysTitle, '', `<div class="principles when c3">${o.keys.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`) : '';
     return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">у ${c.loc}</span>`, lead: o.lead, trust, facts })
@@ -2218,6 +2296,7 @@ function summaryLines(c) {
       <div class="ln tot"><span>${c.plan ? 'За одне прибирання' : 'Разом'} · ${CITIES[state.city].name}</span><span class="num">${c.range ? rangeTxt(c.range) : (c.approx ? '≈ ' : '') + (state.type === 'extras' ? eur2(c.exact) : eur(c.total))}</span></div>${plan}
       <div class="ln sm"><span>${CTRY[country()].incl}${c.approx || c.range ? ' · вікна — орієнтовно' : ''}${state.type === 'moveout' ? ' · передоплата' : ' · оплата після прибирання'}</span></div>${winAccessLine()}</div>`;
   }
+  if (state.touched && c.solo && c.request === 'quote') return `<div class="sumbox">${soloAnswers(c).map((x) => `<div class="ln"><span>${x}</span><span></span></div>`).join('')}<div class="ln sm"><span>${CITIES[state.city].name} · ${SOLO_B.quoteText}</span></div></div>`;
   if (state.touched && c.request === 'hotel') { // no price for a hotel, but the manager gets the client's answers
     const a = state.apt;
     return `<div class="sumbox"><div class="ln"><span>Готель · ${a.rooms} ${roomWord(a.rooms)}</span><span></span></div><div class="ln"><span>Прибирання: ${HOSP.hotelTypes.find(([k]) => k === a.htype)[1].toLowerCase()}</span><span></span></div><div class="ln sm"><span>${CITIES[state.city].name} · вартість розрахуємо індивідуально</span></div></div>`;
@@ -2240,7 +2319,11 @@ function summaryLines(c) {
     if (c.disc) rows.push(['Застосовано обʼємну ставку', '✓']);
     rows.push(['<b>За одне прибирання</b>', `<b>${eur2(c.price)}</b>`]);
   } else if (c.win) {
-    rows.push([`Миття вікон · ${winCount()} шт · до ${dur(c.upTo)}`, '']);
+    const w = state.win, parts = [winCount() ? `${winCount()} шт` : '', w.facade ? `фасад ${w.facade} м²` : ''].filter(Boolean).join(' + ');
+    rows.push([`Миття вікон · ${parts} · ${c.hard || w.sides === 1 ? 'зсередини' : 'з обох боків'} · до ${dur(c.upTo)}`, '']);
+    if (c.hard) rows.push(['Зовнішня сторона — складний доступ, оцінка окремо', '']);
+    if (c.blinds) rows.push([`Жалюзі · ${Math.min(w.blinds, winCount())} вікон`, eur(c.blinds)]);
+    if (w.regular !== 'once') rows.push([`Графік: ${WIN_BIZ.regular.find(([k]) => k === w.regular)[1].toLowerCase()}`, '']);
     rows.push(['<b>Орієнтовно</b>', `<b>${rangeTxt(c.range)}</b>`]);
   }
   return `<div class="sumbox">${rows.map(([a, v]) => `<div class="ln"><span>${a}</span><span class="num">${v}</span></div>`).join('')}<div class="ln sm"><span>${CITIES[state.city].name} · ${sk ? 'ми не є платниками ПДВ' : 'netto'} · орієнтовний розрахунок, не є комерційною пропозицією</span></div></div>`;
@@ -2282,6 +2365,7 @@ function renderModal(done = false) {
         <div class="fld"><label for="fGoal">Мета звернення</label><select id="fGoal">${['Комерційна пропозиція', 'Огляд обʼєкта', 'Тендер — надішлю ТЗ'].map((g) => `<option ${g === bizGoal ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
         <div class="fld-2"><div class="fld"><label for="fCo">Компанія</label><input id="fCo" required placeholder="Назва компанії" autocomplete="organization" /></div><div class="fld"><label for="fName">Контактна особа</label><input id="fName" required placeholder="Імʼя" autocomplete="name" /></div></div>
         <div class="fld"><label for="fPhone">Телефон</label><input id="fPhone" required type="tel" placeholder="+43 …" autocomplete="tel" /></div>
+        ${PAGE === 'service' && SVC_ID === 'reno' ? '<div class="fld"><label for="fReady">Коли обʼєкт має бути готовий до відкриття / передачі?</label><input id="fReady" type="date" /></div>' : ''}
         <details class="opt-f"><summary>Email, адреса й опис обʼєкта <span>необовʼязково</span></summary>
           <div class="fld"><label for="fEmail">Email</label><input id="fEmail" type="email" placeholder="для пропозиції" autocomplete="email" /></div>
           <div class="fld"><label for="fAddr">Адреса обʼєкта</label><input id="fAddr" placeholder="${CITIES[state.city].name}, вулиця, будинок" /></div>
@@ -2379,7 +2463,11 @@ document.addEventListener('input', (e) => {
   if (t.classList.contains('ba-range')) { t.parentElement.style.setProperty('--p', t.value + '%'); return; }
   if (t.id === 'sqmRange') setSqm(t.value, true);
   else if (t.id === 'sqmInput' && t.value.length >= 2) setSqm(t.value, false);
-  else if (t.id === 'aptCommon') { // common areas of an apart-hotel
+  else if (t.id === 'winFacade') { // big showcases and facades by area
+    state.win.facade = +t.value; state.touched = true;
+    t.style.setProperty('--p', (state.win.facade / WIN_BIZ.facade.max * 100) + '%');
+    $('#winFacadeLbl').textContent = state.win.facade ? `${state.win.facade} м²` : 'немає'; paintOut();
+  } else if (t.id === 'aptCommon') { // common areas of an apart-hotel
     state.apt.commonArea = +t.value; state.touched = true;
     t.style.setProperty('--p', ((state.apt.commonArea - HOSP.common.min) / (HOSP.common.max - HOSP.common.min) * 100) + '%');
     $('#aptCommonVal').textContent = `${state.apt.commonArea} м²`; paintOut();
@@ -2415,7 +2503,7 @@ document.addEventListener('change', (e) => {
   else if (t.id === 'sqmRange') track('calc_area', { sqm: state.sqm });
   else if (t.classList.contains('apt-sqm')) { state.apt.rows[+t.dataset.row].sqm = Math.max(15, Math.min(400, Math.round(+t.value || 15))); state.touched = true; renderCalc(); }
   else if (t.id === 'bsArea') { setBsArea(t.value, false); renderCalc(); track('calc_area', { sqm: state.bs.area }); }
-  else if (t.id === 'hRooms') renderCalc();
+  else if (t.id === 'hRooms' || t.id === 'winFacade') renderCalc();
   else if (t.id === 'bsRange') { renderCalc(); track('calc_area', { sqm: state.bs.area }); }
   else if (t.id === 'bizFreq') { state.biz.freq = +t.value; state.touched = true; renderCalc(); track('calc_freq', { freq: state.biz.freq }); }
   else if (t.id === 'carpetRange') { if ($('#drawer').classList.contains('on')) renderDrawer(); else renderCalc(); }
@@ -2506,6 +2594,8 @@ document.addEventListener('click', (e) => {
     else if (!z.has(d.bsz)) z.add(d.bsz); else if (z.size > 1) z.delete(d.bsz);
     state.touched = true; renderCalc(); return;
   }
+  if (d.bsf) { const f = state.bs.flags; if (f.has(d.bsf)) f.delete(d.bsf); else f.add(d.bsf); state.touched = true; renderCalc(); return; }
+  if ('tocalc' in d) return toCalc();
   if (d.bsa) { const a = state.bs.adds; if (a.has(d.bsa)) a.delete(d.bsa); else a.add(d.bsa); state.touched = true; renderCalc(); return; }
   // calculator + drawer controls
   const b0 = state.biz;
@@ -2524,7 +2614,7 @@ document.addEventListener('click', (e) => {
     else if (k === 'plan') state.planUp = state.planUp ? null : PLAN_UP[state.type][0];
     else if (k === 'mboth') state.mattBoth = !state.mattBoth;
     else if (id === 'high') state.win.high = !state.win.high;
-    else if (id === 'blinds') state.win.blinds = state.win.blinds ? 0 : Math.max(1, winSashes());
+    else if (id === 'blinds') state.win.blinds = state.win.blinds ? 0 : Math.max(1, P() ? winSashes() : winCount()); // business: per window
     else if (id === 'nets') state.win.nets = state.win.nets ? 0 : Math.max(1, winSashes());
   } else if (d.flat) { state.flat.has(d.flat) ? state.flat.delete(d.flat) : state.flat.add(d.flat); }
   else if (d.step) {
@@ -2536,9 +2626,10 @@ document.addEventListener('click', (e) => {
     else if (k === 'b') b0[id] = Math.max(id === 'cleaners' ? 1 : 0, b0[id] + delta);
     else if (k === 'rugs') state.rugs = Math.max(0, state.rugs + delta);
     else if (k === 'hc') state.hcl = Math.max(0, state.hcl + delta);
+    else if (k === 'bc') state.bs.counts[id] = Math.max(0, state.bs.counts[id] + delta);
     else if (k === 'ar') state.apt.rows[+id].n = Math.max(1, state.apt.rows[+id].n + delta);
   } else if (d.mside != null) { state.mattBoth = d.mside === '1'; }
-  else if (d.wopt) { if (d.wopt === 'sides') state.win.sides = +d.v; else if (d.wopt === 'access') state.win.access = state.win.access === d.v ? '' : d.v; else state.win.dirt = d.v; }
+  else if (d.wopt) { const w = state.win; if (d.wopt === 'sides') w.sides = +d.v; else if (d.wopt === 'access') w.access = w.access === d.v ? '' : d.v; else if (d.wopt === 'baccess' || d.wopt === 'regular') w[d.wopt] = d.v; else w.dirt = d.v; }
   else return;
   if ($('#drawer').classList.contains('on')) renderDrawer();
   renderCalc();

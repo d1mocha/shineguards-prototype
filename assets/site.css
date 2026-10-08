@@ -1778,3 +1778,10 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 .apt-cm span b { display: block; color: var(--ink); font-size: 13.5px; }
 .apt-cm > b { flex: none; font: 800 17px/1.2 Montserrat, sans-serif; color: var(--ink); text-align: right; white-space: nowrap; }
 .apt-cm > b small { display: block; font: 600 12px Inter, sans-serif; color: var(--muted); }
+
+/* ═════════ Round 19: gyms, clinics, car dealers; business windows and post-renovation pages ═════════ */
+.bs-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bs-counts .cl { display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.bs-counts .stepper { justify-self: start; }
+.opts.bs-flags { margin-top: 8px; }
+.calc.v2 .optcards .optcard small { overflow-wrap: anywhere; }
