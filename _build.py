@@ -245,6 +245,19 @@ def write_entry(out_root, dev):
                 '</head><body><a href="vienna/ua/">Shine Guards — Відень</a></body></html>\n')
 
 
+def write_hosting_files(site):
+    """The shared folder does not depend on one hosting: every static host takes what it understands.
+    .nojekyll — GitHub Pages serves the folder as it is; _headers / _redirects — Cloudflare Pages and Netlify
+    (the prototype must never compete with shineguards.com in search; old private Airbnb links follow to business)."""
+    def put(name, text):
+        with open(os.path.join(site, name), 'w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
+    slug = BUSINESS['airbnb']
+    put('.nojekyll', '')
+    put('_headers', '/*\n  X-Robots-Tag: noindex, nofollow\n')
+    put('_redirects', ''.join(f'/{c}/ua/services/private/{slug}-in-{c} /{c}/ua/services/business/{slug}-in-{c}/ 301\n' for c in CITIES))
+
+
 def read(*parts):
     with open(os.path.join(HERE, *parts), encoding='utf-8') as f:
         return f.read()
@@ -307,6 +320,7 @@ def main():
             write(site, rel, noindex=True, **meta)
         write_entry(site, dev=False)
         shutil.copytree(os.path.join(HERE, 'assets'), os.path.join(site, 'assets'))
+        write_hosting_files(site)
         single = os.path.join(out_root, 'shineguards-prototype.html')
         build_single(single)
         print(f'_share/site: {len(pages)} pages; _share/shineguards-prototype.html: {os.path.getsize(single) // 1024} KB')
