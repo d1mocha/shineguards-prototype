@@ -1414,7 +1414,7 @@ function reviewsSec() {
     ${revWheelHTML()}</section>`;
 }
 // a team photo: the local optimised copy; the single-file build (no assets folder) takes the same frame from Drive
-const teamSrc = (sl) => SINGLE ? DPH(sl.id) : `${ROOT}assets/team/${sl.file}`;
+const teamSrc = (sl, w) => SINGLE || !sl.file ? DPH(sl.id, w) : `${ROOT}assets/team/${sl.file}`;
 function teamGalleryHTML(biz, noGroup) {
   const slides = noGroup ? TEAM_GALLERY.slice(1) : TEAM_GALLERY;
   return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${sl.team
@@ -2123,17 +2123,19 @@ function objFaq(o) {
   return o.faq.map(([q, a]) => [q, a.replace(/\{(\w+)\}/g, (m, k) => vals[k] || m)]);
 }
 /* Business object pages: the calculator is taller than the text next to it, so the first screen had a hole on the left
-   (owner, Oct 2026). What fills it: «proof» — the four numbers and the clients' logos, moved up from the blocks below;
-   ?hero=photo shows the other idea (the team at work), ?hero=0 — the page as it was. */
-const HERO_FILL = ['photo', '0'].includes(params.get('hero')) ? params.get('hero') : 'proof';
+   (owner, Oct 2026). It is filled with the four numbers and photos of the team at work; the photos take exactly the
+   height that is left down to the bottom of the calculator (fitHeroFill), so nothing hangs lower than the calculator.
+   The clients' logos stay in their own big section lower on the page (owner: small logos here are no good). */
 function heroFillHTML() {
-  if (HERO_FILL === '0') return '';
-  if (HERO_FILL === 'photo') {
-    const sl = TEAM_GALLERY[1];
-    return `<figure class="hero-fill hf-photo pop" style="--i:6"><img alt="${sl.alt}" referrerpolicy="no-referrer" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} /><figcaption>${ic('people')}<span><b>Прибирає наша команда</b>Офіційно оформлені та перевірені працівники, відповідальність застрахована</span></figcaption></figure>`;
-  }
   return `<div class="hero-fill hero-stats pop" style="--i:6">${statsHTML(STATS_BIZ)}
-    <div class="hf-logos"><span>Нам довіряють</span><div class="hf-row">${LOGOS.map((l) => `<span class="logo-tile"><img loading="lazy" alt="${l.alt}" src="${l.src}" /></span>`).join('')}</div></div></div>`;
+    <div class="hf-photos">${HERO_PHOTOS.map((p) => `<figure><img alt="${p.alt}" referrerpolicy="no-referrer" src="${DPH(p.id, 900)}" style="object-position:${p.pos}" /></figure>`).join('')}</div></div>`;
+}
+function fitHeroFill() {
+  const ph = $('.hf-photos'), calc = $('.calc-wrap'); if (!ph || !calc) return;
+  ph.hidden = false; ph.style.height = '';
+  if (matchMedia('(max-width: 980px)').matches) return; // phones and tablets: the block follows the calculator, a fixed height
+  const room = calc.getBoundingClientRect().bottom - ph.getBoundingClientRect().top;
+  if (room < 160) ph.hidden = true; else ph.style.height = Math.min(380, Math.round(room)) + 'px';
 }
 function pageObject() {
   const o = PAGE_OBJ, c = CITIES[state.city], sk = country() === 'sk';
@@ -2149,9 +2151,8 @@ function pageObject() {
       : SOLO_B && SOLO_B.quote ? [['Вартість', 'після огляду'], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']]
       : [sk ? ['Ставка', 'за запитом'] : ['Регулярно, netto', `від ${dec(BIZ.rate)} € / год`], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']];
     const keys = o.keys ? sec('keys', o.keysTitle, '', `<div class="principles when c3">${o.keys.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`) : '';
-    const proof = HERO_FILL === 'proof'; // the numbers and the logos stand on the first screen — not twice on the page
     return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">у ${c.loc}</span>`, lead: o.lead, trust, facts, extra: heroFillHTML() })
-      + keys + objInclSec(o) + caseSec(SVC_ID) + aboutSec(null, { adv: o.adv, sub: o.advSub, noStats: proof, noGroup: HERO_FILL === 'photo' }) + stepsSec(o.steps || 'business') + (proof ? '' : proofSec())
+      + keys + objInclSec(o) + caseSec(SVC_ID) + aboutSec(null, { adv: o.adv, sub: o.advSub, noStats: true }) + stepsSec(o.steps || 'business') + proofSec() // the numbers stand on the first screen — not twice on the page
       + faqSec(objFaq(o), o.faqTitle, true) + finalBizSec(o.final) + objRelatedSec(SVC_ID);
   }
   const price = o.calc.obj === 'other' ? ['Ціна', 'після огляду'] : o.calc.obj === 'apartments' ? ['Ціна без ПДВ', `від ${eur2(APT[sk ? 'sk' : 'at'][0])} / апартамент`] : sk ? ['Ставка', 'за запитом'] : ['Ставка без ПДВ', 'від 27 € / год'];
@@ -2460,7 +2461,7 @@ function render() {
   const pages = { home: pageHome, list: pageList, service: pageService, object: pageObject, about: pageAbout, promotions: pagePromotions, contacts: pageContacts, partnership: pagePartnership };
   document.getElementById('app').innerHTML = headerHTML() + `<main id="main">${(pages[PAGE] || pageHome)()}</main>` + footerHTML() + overlaysHTML();
   renderCalc(); renderFaq(); renderLive(); updateFab(); applyJsonLd(); wireDynamic(); initWipe();
-  fitCity(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitCity).catch(() => {});
+  fitCity(); fitHeroFill(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitCity(); fitHeroFill(); }).catch(() => {});
   const sb = $('#svcBtn');
   sb.addEventListener('mouseenter', () => { clearTimeout(megaTimer); if (!$('#mega').classList.contains('on')) megaOpenedAt = Date.now(); $('#mega').classList.add('on'); sb.setAttribute('aria-expanded', 'true'); });
   $('#hdr').addEventListener('mouseleave', () => { megaTimer = setTimeout(closeMenus, 250); });
@@ -2713,5 +2714,5 @@ if (SINGLE) {
   if (seo) { document.title = seo[0]; const md = $('meta[name="description"]'); if (md) md.content = seo[1]; }
 }
 setInterval(() => { if ($('#revTrack') && !revHover && !document.hidden) revGo(revIdx + 1); }, 5000);
-window.addEventListener('resize', () => revCenter());
+window.addEventListener('resize', () => { revCenter(); fitHeroFill(); });
 setInterval(renderLive, 60000);

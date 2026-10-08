@@ -1160,9 +1160,20 @@ const DPH = (id, w = 1600) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
 const TEAM_GALLERY = [
   { file: 'team-group.jpg', id: '1D90VHEk3WgNUqbgqGvXulib022nUrcmp', alt: 'Команда клінерів Shine Guards у формі', team: true },
   { file: 'work-team.jpg', id: '1YoQiDQkufjsNacBn9TumkHgjKVmNuX7Z', alt: 'Клінерка Shine Guards протирає скляний стіл, колеги прибирають вітальню', cap: 'Працюємо командою', pos: '55% 50%' },
+  { id: '1Ea8A7Buk9lEtgLeTszfyscD8ahfGllga', alt: 'Дві клінерки Shine Guards прибирають кухню', cap: 'Кухня командою', pos: '45% 50%' },
+  { id: '1xRlguUOV3HARtLEQ2GraP6F2NB89fy38', alt: 'Клінерка Shine Guards чистить духовку', cap: 'Духовка всередині', pos: '55% 45%' },
   { file: 'work-detail.jpg', id: '1WD5k0ZAld3PCfTQZDrDXQUPms64Nm2ZV', alt: 'Клінерка Shine Guards у рукавичках протирає стіл серветкою', cap: 'Увага до деталей', pos: '70% 50%' },
+  { id: '1jqAVl0zIvb0s8Fsr4q-Wfhvi5A5xPnag', alt: 'Клінерка Shine Guards пилососить підлогу', cap: 'Підлога начисто', pos: '62% 35%' },
+  { id: '1uMIUQovxgWLaXKnibQkw4ehD_DBgrriQ', alt: 'Клінерка Shine Guards протирає дзеркало у ванній', cap: 'Дзеркала до блиску', pos: '70% 40%' },
   { file: 'work-room.jpg', id: '1SArKm8VBW6DxBxgXP4bQCrrnSitd_qrv', alt: 'Три клінерки Shine Guards прибирають вітальню', cap: 'Свій інвентар і засоби' },
+  { id: '1A1y_GB028JIzIHtns-htyD8o_6rECyHZ', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Холодильник усередині', pos: '68% 40%' },
   { file: 'team-sofa.jpg', id: '1i1TeVN1HkytFcGGD7a_DbKhkQ-Bm5qtg', alt: 'Три клінерки Shine Guards на дивані', cap: 'Люди, яким довіряють дім', capB: 'Люди, яким довіряють обʼєкти' },
+];
+// the first screen of the business object pages: three other frames next to the numbers (the gallery below shows the rest)
+const HERO_PHOTOS = [
+  { id: '1SN_s3e8lYuGUDLhUNEmrL6Vp9Sb9CPOb', alt: 'Клінерка Shine Guards протирає скляний стіл у вітальні', pos: '62% 50%' },
+  { id: '1JRJGUZiDpFhg_cv61dfxPWigziSIJbrY', alt: 'Клінерка Shine Guards миє вікно', pos: '72% 35%' },
+  { id: '1QeOkaLuJDbrVYZp6idrsk9rKdRbYCnPP', alt: 'Клінерка Shine Guards протирає світильник зі стремʼянки', pos: '60% 22%' },
 ];
 // cut-out figures for the "home / business" cards on the About page
 const TEAM_CUTS = [
@@ -1179,14 +1190,14 @@ const TEAM_ROUND = 'https://res.cloudinary.com/dbiy7qyfe/image/upload/c_fill,g_f
 
 // Real numbers from shineguards.com: [number, label, suffix, icon, one line of context]
 const STATS_PRIVATE = [
-  ['2485', 'виконаних прибирань', '', 'bucket', 'квартири, будинки, офіси й апартаменти'],
+  ['2485', 'виконаних прибирань', '+', 'bucket', 'квартири, будинки, офіси й апартаменти'],
   ['12357', 'годин професійного клінінгу', '+', 'clock', 'кожна — за чек-листом пакета'],
   ['4,9', 'рейтинг у Google', ' ★', 'google', '58 відгуків на Google Maps'],
   ['100', 'прибирань застраховано', '%', 'shield', 'збитки покриваються відповідно до умов страхування'],
 ];
 const STATS_BIZ = [
-  ['20', 'бізнес-обʼєктів на постійному обслуговуванні', '', 'towers', 'прибираємо за їхнім графіком'],
-  ['2485', 'виконаних прибирань', '', 'bucket', 'офіси, заклади, апартаменти'],
+  ['20', 'бізнес-обʼєктів на постійному обслуговуванні', '+', 'towers', 'прибираємо за їхнім графіком'],
+  ['2485', 'виконаних прибирань', '+', 'bucket', 'офіси, заклади, апартаменти'],
   ['до 30', 'хв — відповідь менеджера у робочий час', '', 'headset', 'пн–пт, 9:00–18:00'],
   ['4,9', 'рейтинг у Google', ' ★', 'google', '58 відгуків на Google Maps'],
 ];
