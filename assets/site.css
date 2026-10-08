@@ -1785,3 +1785,36 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 .bs-counts .stepper { justify-self: start; }
 .opts.bs-flags { margin-top: 8px; }
 .calc.v2 .optcards .optcard small { overflow-wrap: anywhere; }
+
+/* ═════════ Round 20: owner's remarks — ticks for zones, menu sub-lines, the city arrow ═════════ */
+/* a rectangle with a box = «tick as many as you need»; a pill = one choice of several */
+.tchip .ckb { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid #B9C7D9; background: #fff; flex: none; display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.tchip[aria-pressed="true"] .ckb { background: var(--blue); border-color: var(--blue); }
+.tchip[aria-pressed="true"] .ckb::after { content: ''; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+.calc.v2 .q .q-link { border: 0; background: none; padding: 2px 0; font: 600 12.5px Inter, sans-serif; color: var(--blue); cursor: pointer; white-space: nowrap; }
+.bs-hint.zh { margin: -2px 0 8px; }
+.bs-flagrows { margin-top: 12px; border-top: 1px solid #EDF1F6; padding-top: 4px; }
+.bs-flagrows .checkrow .ct small { margin-top: 2px; line-height: 1.35; }
+/* the sub-line of a menu item wraps as a paragraph (it used to take the line height of the title around it) */
+.mega-item small { display: block; margin-top: 2px; line-height: 1.35; }
+/* city list in the header: own arrow right after the name; the width is set by fitCity() */
+.city-select { appearance: none; -webkit-appearance: none; padding: 4px 16px 4px 0; text-overflow: ellipsis;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 8l5 5 5-5' fill='none' stroke='%23021024' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center / 13px; }
+/* the business home calculator: «→» on the types that open a calculator of their own; a link to the full one */
+.calc.v2 .objs .obj .go { margin-left: 2px; color: var(--muted); font-weight: 600; }
+.lite-more { display: inline-block; margin-top: 14px; font: 600 13px Inter, sans-serif; color: var(--blue); text-decoration: none; }
+.lite-more:hover { text-decoration: underline; }
+/* business object pages: proof under the first-screen points (the calculator next to them is taller than the text) */
+.hero-fill { margin-top: 26px; max-width: 580px; }
+.hero-fill.hero-stats .stats { margin-top: 0; }
+.hf-logos { margin-top: 20px; }
+.hf-logos > span { display: block; margin-bottom: 8px; font: 600 12.5px Inter, sans-serif; color: var(--muted); }
+.hf-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.hf-row .logo-tile { width: auto; height: 64px; border-radius: 14px; padding: 6px; box-shadow: 0 6px 16px -12px rgba(2,16,36,.3); }
+.hf-photo { position: relative; margin: 26px 0 0; border-radius: 24px; overflow: hidden; aspect-ratio: 16 / 10; background: #E6EDF6; }
+.hf-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hf-photo figcaption { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.94); font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.hf-photo figcaption .oi { width: 30px; height: 30px; flex: none; color: var(--blue); }
+.hf-photo figcaption b { display: block; color: var(--ink); font-size: 13.5px; }
+@media (max-width: 980px) { .hero-text > .hero-fill { order: 9; max-width: 640px; margin-top: 22px; } }
+@media (max-width: 520px) { .hf-row { grid-template-columns: repeat(3, 1fr); } }
