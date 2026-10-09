@@ -156,12 +156,9 @@ const svcHref = (id, kind, city = state.city) => `${ROOT}${city}/ua/services/${k
 const pageHref = (name) => `${ROOT}ua/${name}/${IDX}`;
 const objHref = (id, city = state.city) => `${ROOT}${city}/ua/locations/${OBJECTS[id].slug}-in-${city}/${IDX}`;
 const prodUrl = (id, kind, city = state.city) => `${BASE}/${city}/ua/services/${kind}/${SVCS[kind][id].slug}-in-${city}`;
-function modeHref(m) {
-  if (GLOBAL_PAGE) return `${pageHref(PAGE)}?mode=${m}`;
-  if (PAGE === 'object') return m === 'business' ? objHref(SVC_ID) : homeHref('private');
-  if (PAGE === 'service') return SVCS[m][SVC_ID] ? svcHref(SVC_ID, m) : homeHref(m);
-  return homeHref(m);
-}
+// «Для дому» / «Для бізнесу» in the header always lead to that side's home page, from any page (owner, Oct 2026) —
+// not to the twin of the current page and not to the same page in the other mode
+function modeHref(m) { return homeHref(m); }
 function cityHref(c) {
   if (PAGE === 'home') return homeHref(state.mode, c);
   if (PAGE === 'list') return listHref(c);
@@ -2639,7 +2636,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('button, a[data-mode], a[data-inc]');
   if (!b) return;
   const d = b.dataset;
-  if (d.mode) { if (GLOBAL_PAGE) { e.preventDefault(); state.mode = d.mode; store.set('sg-mode', d.mode); lastNum = null; state.faqCat = 0; render(); } return; }
+  if (d.mode) return; // a plain link to that side's home page
   if ('inc' in d) { const href = b.getAttribute('href'); if (href.startsWith('#') && !href.startsWith('#/')) { e.preventDefault(); const tgt = document.getElementById(href.slice(1)); if (tgt) tgt.scrollIntoView({ behavior: 'smooth' }); } return; }
   if (b.id === 'svcBtn') { const isOn = $('#mega').classList.contains('on'); const on = !isOn || Date.now() - megaOpenedAt < 500; $('#mega').classList.toggle('on', on); b.setAttribute('aria-expanded', on); if (on && !isOn) megaOpenedAt = Date.now(); return; }
   if (b.id === 'langBtn') { const on = !$('#langMenu').classList.contains('on'); $('#langMenu').classList.toggle('on', on); b.setAttribute('aria-expanded', on); return; }
