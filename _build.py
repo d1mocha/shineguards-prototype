@@ -11,6 +11,7 @@ Run:  python _build.py           → page shells next to this script (dev, _serv
                                    in one file, to send to people) and _share/site/
                                    (clean folder for static hosting, noindex)
 """
+import hashlib
 import base64
 import html
 import json
@@ -180,16 +181,17 @@ TEMPLATE = '''<!DOCTYPE html>
 <meta property="og:image" content="{og_image}" />
 <meta property="og:locale" content="uk_UA" />
 <meta name="sg" data-root="{root}" data-page="{page}" data-kind="{kind}" data-svc="{svc}" data-city="{city}" />
+<meta name="sg-build" content="{build}" />
 <link rel="icon" href="{root}assets/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@600;700;800&amp;display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="{root}assets/site.css" />
+<link rel="stylesheet" href="{root}assets/site.css?v={build}" />
 </head>
 <body>
 <div id="app"><noscript><h1>{h1}</h1><p>{desc}</p></noscript></div>
-<script src="{root}assets/data.js"></script>
-<script src="{root}assets/site.js"></script>
+<script src="{root}assets/data.js?v={build}"></script>
+<script src="{root}assets/site.js?v={build}"></script>
 </body>
 </html>
 '''
@@ -213,6 +215,23 @@ def page_list():
     return out
 
 
+_BUILD = None
+
+
+def build_id():
+    """A short fingerprint of the styles and scripts. Every page asks for them as file?v=<id>, so a browser that keeps
+    files for minutes (GitHub Pages lets it: 10 minutes) cannot run an old script on a new page. The shared folder also
+    gets build.txt: a page compares it with its own id and reloads itself once if it is behind (see site.js)."""
+    global _BUILD
+    if _BUILD is None:
+        h = hashlib.sha1()
+        for name in ('data.js', 'site.js', 'site.css'):
+            with open(os.path.join(HERE, 'assets', name), 'rb') as f:
+                h.update(f.read())
+        _BUILD = h.hexdigest()[:10]
+    return _BUILD
+
+
 def write(out_root, rel_dir, *, seo, page, kind='', svc='', city='', noindex=False):
     title, desc = seo
     depth = len([p for p in rel_dir.split('/') if p])
@@ -223,7 +242,7 @@ def write(out_root, rel_dir, *, seo, page, kind='', svc='', city='', noindex=Fal
         title=html.escape(title), desc=html.escape(desc), canonical=canonical,
         robots='<meta name="robots" content="noindex, nofollow" />\n' if noindex else '',
         alt_de=alt.format(lang='de'), alt_en=alt.format(lang='en'), og_image=OG_IMAGE,
-        root=root, page=page, kind=kind, svc=svc, city=city, h1=html.escape(title.split(' | ')[0]),
+        root=root, page=page, kind=kind, svc=svc, city=city, h1=html.escape(title.split(' | ')[0]), build=build_id(),
     )
     path = os.path.join(out_root, *rel_dir.split('/'), 'index.html')
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -254,6 +273,7 @@ def write_hosting_files(site):
             f.write(text)
     slug = BUSINESS['airbnb']
     put('.nojekyll', '')
+    put('build.txt', build_id())
     put('_headers', '/*\n  X-Robots-Tag: noindex, nofollow\n')
     put('_redirects', ''.join(f'/{c}/ua/services/private/{slug}-in-{c} /{c}/ua/services/business/{slug}-in-{c}/ 301\n' for c in CITIES))
 

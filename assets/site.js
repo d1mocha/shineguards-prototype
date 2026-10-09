@@ -2760,6 +2760,17 @@ applyPreset((PAGE_SVC || PAGE_OBJ || {}).calc);
 applyParams();
 if (LITE) liteSet(state.biz.obj);
 render();
+// A hosting that lets the browser keep pages for minutes (GitHub Pages: 10) may show the previous build right after a
+// publish. The page asks for the current build id past every cache and, if it is behind, reloads itself (twice at most).
+if (!SINGLE && location.protocol !== 'file:') (() => {
+  const mine = (document.querySelector('meta[name="sg-build"]') || {}).content; if (!mine) return;
+  fetch(`${ROOT}build.txt?t=${Date.now()}`, { cache: 'no-store' }).then((r) => (r.ok ? r.text() : '')).then((t) => {
+    const cur = t.trim(); if (!/^[0-9a-f]{10}$/.test(cur)) return; // no such file on the local server
+    if (cur === mine) { store.set('sg-reload', ''); return; }
+    const n = +store.get('sg-reload') || 0; if (n >= 2) return;
+    store.set('sg-reload', String(n + 1)); location.reload();
+  }).catch(() => {});
+})();
 const ANCHOR = SINGLE ? ROUTE.anchor : location.hash.slice(1);
 const toAnchor = () => { const t = ANCHOR && document.getElementById(ANCHOR); if (t) t.scrollIntoView(); };
 if (ANCHOR) { setTimeout(toAnchor, 50); window.addEventListener('load', toAnchor); }
