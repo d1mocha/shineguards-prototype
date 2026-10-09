@@ -126,7 +126,7 @@ const tierOf = (sqm) => TIERS.findIndex((max) => sqm <= max);
    table price; in the last tier (290–300) the table price holds. Time: the cleaner-hours of the tiers grow the same way,
    the crew is the one of the tier. */
 const TIER_FROM = [30, 50, 70, 90, 110, 130, 150, 170, 190, 210, 230, 250, 270, 290];
-const stepSqm = (sqm) => Math.floor(Math.min(300, sqm) / 5) * 5;
+const stepSqm = (sqm) => Math.floor(Math.min(300, sqm) / 5) * 5; // the area itself is set to any whole m², the price steps by 5
 const tierAt = (sqm) => { const a = stepSqm(sqm); let i = TIER_FROM.length - 1; while (i > 0 && a < TIER_FROM[i]) i--; return i; };
 const tierLerp = (list, sqm) => { const a = Math.max(TIER_FROM[0], stepSqm(sqm)), i = tierAt(sqm); return i === list.length - 1 ? list[i] : list[i] + (list[i + 1] - list[i]) * (a - TIER_FROM[i]) / (TIER_FROM[i + 1] - TIER_FROM[i]); };
 const pkgPrice = (key, sqm) => Math.round(tierLerp(PRICES[CITIES[state.city].prices][key], sqm));
@@ -610,10 +610,10 @@ function privInputs() {
     <div class="types">${['basic', 'general', 'deep'].map((t) => `<button type="button" class="type" data-type="${t}" aria-pressed="${state.type === t}"><b>${TYPES[t].name}</b><span>від <span class="from">${eur(cp[t][0])}</span></span></button>`).join('')}</div>
     <div class="more-types">${['moveout', 'windows', 'chem', 'reno'].map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>`;
   if (isPackage()) {
-    const pct = ((Math.min(state.sqm, 305) - 15) / 290 * 100).toFixed(1);
+    const pct = ((Math.min(state.sqm, 301) - 15) / 286 * 100).toFixed(1);
     const tier = state.sqm <= 300 ? 'тариф ' + stepLabel(state.sqm) + ' м²' : '';
     h += `<div class="label">Площа <span class="hint" id="tierHint">${tier}</span></div>
-      <div class="area-row"><input type="range" id="sqmRange" min="15" max="305" step="5" value="${Math.min(state.sqm, 305)}" style="--p:${pct}%" aria-label="Площа, м²" />
+      <div class="area-row"><input type="range" id="sqmRange" min="15" max="301" step="1" value="${Math.min(state.sqm, 301)}" style="--p:${pct}%" aria-label="Площа, м²" />
         <label class="area-box"><input id="sqmInput" type="number" inputmode="numeric" min="15" max="999" value="${state.sqm}" aria-label="Площа в м²" /><span>м²</span></label></div>`;
   }
   if (isRegType()) {
@@ -718,9 +718,9 @@ function privInputsB() {
     ${open ? `<div class="more-types">${other.map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>` : ''}
     ${isOther ? '' : moreBtn('more', 'Інша послуга: переїзд, вікна, після ремонту…', open)}`;
   if (isPackage()) {
-    const pct = ((Math.min(state.sqm, 305) - 15) / 290 * 100).toFixed(1);
+    const pct = ((Math.min(state.sqm, 301) - 15) / 286 * 100).toFixed(1);
     h += qLabel(2, 'Площа квартири', `<label class="area-big"><input id="sqmInput" type="number" inputmode="numeric" min="15" max="999" value="${state.sqm}" aria-label="Площа в м²" /><span>м²</span></label>`)
-      + `<input type="range" id="sqmRange" min="15" max="305" step="5" value="${Math.min(state.sqm, 305)}" style="--p:${pct}%" aria-label="Площа, м²" aria-valuetext="${state.sqm} квадратних метрів" />`;
+      + `<input type="range" id="sqmRange" min="15" max="301" step="1" value="${Math.min(state.sqm, 301)}" style="--p:${pct}%" aria-label="Площа, м²" aria-valuetext="${state.sqm} квадратних метрів" />`;
     if (state.sqm <= 300) {
       const c = computePriv(), add = c.lines.slice(1).reduce((t, l) => t + l.price, 0);
       h += `<div class="xtra ${state.ui.extras ? 'open' : ''}"><button type="button" class="xtra-t" data-ui="extras" aria-expanded="${state.ui.extras}">${ic('plus')}<span><b>Додаткові послуги</b><small>${c.extrasCount ? `обрано ${c.extrasCount} · +${eur(add)}` : XTRA_HINT[state.type] || XTRA_HINT.basic}</small></span>${chev}</button>${state.ui.extras ? `<div class="xtra-b">${resetRow(c.extrasCount, `+${eur(add)}`)}${extrasHTML()}</div>` : ''}</div>`;
@@ -737,7 +737,7 @@ function wzBar(step, labels, key, canNext) {
   return `<ol class="wz">${labels.map((l, i) => { const n = i + 1, cls = n < step ? 'done' : n === step ? 'on' : '';
     return `<li class="${cls}"><button type="button" data-${key}="${n}" ${n > step && !canNext ? 'disabled' : ''} aria-current="${n === step ? 'step' : 'false'}"><span class="n">${n < step ? '✓' : n}</span>${l}</button></li>`; }).join('')}</ol>`;
 }
-const wzNav = (step, last, key, canNext, nextLabel = 'Далі') => `<div class="wz-nav">${step > 1 ? `<button type="button" class="wz-back" data-${key}="${step - 1}">← Назад</button>` : '<span></span>'}${step < last ? `<button type="button" class="wz-next" data-${key}="${step + 1}" ${canNext ? '' : 'disabled'}>${nextLabel} →</button>` : ''}</div>`;
+const wzNav = (step, last, key, canNext, nextLabel = 'Далі') => `<div class="wz-nav">${step > 1 ? `<button type="button" class="wz-back" data-${key}="${step - 1}">← Назад</button>` : ''}${step < last ? `<button type="button" class="wz-next" data-${key}="${step + 1}" ${canNext ? '' : 'disabled'}>${nextLabel} →</button>` : ''}</div>`;
 // can the outer side be reached safely? (asked when both sides are washed; goes to the manager with the request)
 const WIN_ACCESS = [['yes', 'Так', 'з балкона, з землі або стулки відчиняються'], ['inside', 'Тільки з квартири', 'дістатися можна лише зсередини'], ['ask', 'Потрібне уточнення', 'надішлю фото — підкажете']];
 /* Business glass: office windows, doors, showcases, facade sections, partitions; big facades by area; the outer side
@@ -766,7 +766,7 @@ function windowsWizardBiz() {
       <p class="wz-q">Особливості <span>необовʼязково</span></p>
       ${checkrow('w:workhours', w.workhours, 'Миємо в робочий час', 'коли в приміщенні люди — це триває довше', '')}`;
   }
-  return wzBar(st, ['Скло і кількість', 'Сторони й доступ', 'Графік і стан'], 'wstep', any) + `<div class="wz-body">${body}</div>` + wzNav(st, 3, 'wstep', any, st === 2 ? 'Далі: графік і стан' : 'Далі');
+  return wzBar(st, ['Скло і кількість', 'Сторони й доступ', 'Графік і стан'], 'wstep', any) + `<div class="wz-body">${body}</div>` + wzNav(st, 3, 'wstep', any, st === 2 ? 'Далі: графік і стан' : 'Далі: сторони й доступ');
 }
 function windowsWizard() {
   if (!P()) return windowsWizardBiz();
@@ -794,7 +794,7 @@ function windowsWizard() {
       ${checkrow('w:high', w.high, 'Вікна вище 2 метрів', 'потрібна драбина', '')}
       ${WIN_HARD.map(([k, t, x]) => checkrow('w:' + k, w[k], t, x, '')).join('')}`;
   }
-  return wzBar(st, ['Тип і кількість', 'Що помити', 'Доступ і деталі'], 'wstep', cnt > 0) + `<div class="wz-body">${body}</div>` + wzNav(st, 3, 'wstep', cnt > 0, st === 2 ? 'Далі: доступ і деталі' : 'Далі');
+  return wzBar(st, ['Тип і кількість', 'Що помити', 'Доступ і деталі'], 'wstep', cnt > 0) + `<div class="wz-body">${body}</div>` + wzNav(st, 3, 'wstep', cnt > 0, st === 2 ? 'Далі: доступ і деталі' : 'Далі: що помити');
 }
 // windows: the price is confirmed by photos — the estimate can go straight to WhatsApp, photos follow in the chat
 function waPhotoLink() {
@@ -862,7 +862,7 @@ function chemWizard() {
       return `<div class="cgroup"><h4>${ic(c.icon)}${c.name}</h4>${list}</div>`;
     }).join('') + `<details class="how"><summary>Які тканини чистимо?</summary><div class="how-b">${FABRIC_HTML}</div></details>`;
   }
-  return wzBar(st, ['Що чистимо', 'Розмір і кількість'], 'cstep', any) + `<div class="wz-body">${body}${any ? '<button type="button" class="q-link wz-reset" data-xclear="chem">× Скинути вибір</button>' : ''}</div>` + wzNav(st, 2, 'cstep', any);
+  return wzBar(st, ['Що чистимо', 'Розмір і кількість'], 'cstep', any) + `<div class="wz-body">${body}${any ? '<button type="button" class="q-link wz-reset" data-xclear="chem">× Скинути вибір</button>' : ''}</div>` + wzNav(st, 2, 'cstep', any, 'Далі: розмір і кількість');
 }
 function aptInputsB(sk, n) {
   const a = state.apt, N = a.rows.reduce((t, r) => t + r.n, 0), tier = [...APT.counts].reverse().find((c) => N >= +c.id), d = tier ? tier.d : 0;
@@ -1376,8 +1376,9 @@ const PLAN_WORKS = [
 ];
 const REPEAT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
 const pkgTasks = (k) => ROOMS.reduce((a, rm) => a + rm.tasks.filter(([n, l]) => !n.startsWith('🎁') && TIER_RANK[l] <= TIER_RANK[k]).length, 0);
-// gifts: one quiet label, every gift its own chip
-const giftsRow = (k, cls = '') => `<div class="gifts-row ${cls}"><span class="gr-l">${GIFT_SVG}У подарунок</span>${(PKG_GIFTS[k] || []).map((g) => `<span class="gr-c">${g}</span>`).join('')}</div>`;
+// gifts: one block — the label and every gift on a line of its own (owner, Oct 2026: chips scattered over two lines
+// looked untidy; two gifts stay two separate lines)
+const giftsRow = (k, cls = '') => `<div class="gifts-box ${cls}"><span class="gb-l">${GIFT_SVG}У подарунок</span><ul>${(PKG_GIFTS[k] || []).map((g) => `<li>${g}</li>`).join('')}</ul></div>`;
 // the package a package page is about (null on every other page)
 const ownTier = () => PAGE === 'service' && P() && PAGE_SVC && PAGE_SVC.incl === 'tier' ? SVC_ID : null;
 function compareSec() {
@@ -1398,7 +1399,7 @@ function compareSec() {
       ${badge ? `<span class="plan-badge">${badge}</span>` : ''}
       <div class="plan-row"><h3>${TYPES[k].name}</h3><span class="plan-price">від <b>${eur(cp[k][0])}</b></span></div><p class="plan-scn">${PKG_SCN[k]}</p>
       <ul class="zones"><li class="zt base"><span class="zt-ics">${ic('sofa')}${ic('oven')}${ic('bath')}</span><span><b>Кімнати, кухня, ванна й туалет</b><small>${PKG_BASE[k]}</small><span class="vh"> — входить</span></span><i class="zb" aria-hidden="true">✓</i></li>${PLAN_WORKS.map((w) => tile(w, k)).join('')}</ul>
-      <div class="plan-x">${k === 'basic' ? `<span class="px-reg">${REPEAT_SVG}Регулярно — знижка до 7%</span>` : giftsRow(k)}${k === 'deep' ? '<p class="plan-gn">Година хімчистки — це, наприклад, диван до 2 метрів або два крісла.</p>' : ''}</div>
+      <div class="plan-x">${k === 'basic' ? `<span class="px-reg">${REPEAT_SVG}Регулярно — знижка до 7%</span>` : giftsRow(k)}</div>
       <button type="button" class="plan-more" data-cklist="${k}">Повний чек-лист · ${pkgTasks(k)} ${tasksWord(pkgTasks(k))} →</button>
       <button type="button" class="plan-go" data-pick="${k}">${k === t ? '✓ Обрано' : 'Обрати ' + TYPES[k].name.toLowerCase()}</button>
     </article>`;
@@ -1408,7 +1409,7 @@ function compareSec() {
     : [['Базове', 'для підтримання чистоти.'], ['Генеральне', 'для ретельного прибирання.'], ['Глибоке', 'для максимальної деталізації, внутрішніх поверхонь і складних забруднень.']];
   const body = `<div class="plans">${['basic', 'general', 'deep'].map(card).join('')}</div>
     <p class="plans-leg"><span><i class="zb">✓</i>входить у пакет</span><span><i class="zb off"></i>не входить — додайте окремо або оберіть старший пакет</span></p>
-    <div class="plans-pick reveal"><b>Як обрати</b>${pick.map(([n, x]) => `<p><b>${n}</b> — ${x}</p>`).join('')}</div>`;
+    <div class="plans-pick reveal"><b class="pp-t">Як обрати</b><div class="pp-g c${pick.length}">${pick.map(([n, x]) => `<p><b>${n}</b><span>${x.charAt(0).toUpperCase() + x.slice(1)}</span></p>`).join('')}</div></div>`;
   return sec('compare', 'Порівняйте пакети прибирання', 'Кожен наступний пакет включає все з попереднього та додаткові роботи.', body);
 }
 // the chosen package's card comes into view on phones, where the cards swipe
@@ -1432,7 +1433,7 @@ function openChecklist(k) {
   const gifts = (PKG_GIFTS[k] || []).map((g) => `<span class="gift">${GIFT_SVG}${g} у подарунок</span>`).join('');
   const m = $('#modal');
   m.classList.add('wide');
-  m.innerHTML = `<div class="ck-head"><div><h3 id="mTitle">${TYPES[k].full}</h3><p class="muted">Повний чек-лист · ${n} ${tasksWord(n)}${k !== 'basic' ? ' · синім — те, що додається в цьому пакеті' : ''}</p></div><button class="x" type="button" data-close aria-label="Закрити">×</button></div>
+  m.innerHTML = `<div class="ck-head"><div><h3 id="mTitle">${TYPES[k].full}</h3><p class="muted">Повний чек-лист · ${n} ${tasksWord(n)}${k !== 'basic' ? ' · жирним — те, що додається в цьому пакеті' : ''}</p></div><button class="x" type="button" data-close aria-label="Закрити">×</button></div>
     ${gifts ? `<div class="ck-gifts">${gifts}</div><p class="ck-note">${GIFT_NOTE[k]}</p>` : ''}<div class="ck-rooms">${rooms}</div>
     <button class="cta" type="button" data-pick="${k}">Обрати ${TYPES[k].name.toLowerCase()} — від ${eur(cityPrices()[k][0])}</button>`;
   m.classList.add('on'); $('#scrim').classList.add('on');
@@ -1507,10 +1508,12 @@ const objTile = (id, i) => `<a class="objcard pop" style="--i:${i}" href="${objH
 function stepsSec(key = P() ? 'private' : 'business', title = 'Всього 4 простих кроки до бездоганної чистоти') {
   return sec('how', title, '', `<div class="steps">${STEPS[key].map(([icn, t, d], i) => `<div class="step pop" style="--i:${i}"><div class="step-top"><span class="n">${i + 1}</span>${ic(icn)}</div><h3>${t}</h3><p>${d}</p></div>`).join('')}</div>`);
 }
+// {reg} in a promo text = the three regular discounts as labels, not as a sentence of numbers
+const promoText = (p) => p.d.replace('{reg}', `<span class="dsc-row">${FREQ.filter((f) => f.disc).map((f) => `<span class="dsc">${f.label} <b>−${Math.round(f.disc * 100)}%</b></span>`).join('')}</span>`);
 function promosSec(list = PROMOS[state.mode], title = 'Акції та спеціальні пропозиції', more = false) {
   return sec('promo', title, '', `<div class="promos${list.length === 2 ? ' two' : ''}">${list.map((p, i) => `
     <article class="promo ${p.cls} pop" style="--i:${i}">
-      <div class="bd">${p.tag ? `<span class="pm-tag">${p.tag}</span>` : ''}<span class="pct ${p.sm ? 'sm' : ''}">${p.pct}</span><h3>${p.t.charAt(0).toUpperCase() + p.t.slice(1)}</h3><p>${p.d}</p><button type="button" class="pbtn" data-promo="${p.act}">${p.btn}</button></div>
+      <div class="bd">${p.tag ? `<span class="pm-tag">${p.tag}</span>` : ''}<span class="pct ${p.sm ? 'sm' : ''}">${p.pct}</span><h3>${p.t.charAt(0).toUpperCase() + p.t.slice(1)}</h3><p>${promoText(p)}</p><button type="button" class="pbtn" data-promo="${p.act}">${p.btn}</button></div>
       <img class="cut" loading="lazy" alt="${p.alt}" src="${p.img}" />
     </article>`).join('')}</div>${more ? `<a class="promo-more" href="${pageHref('promotions')}">Усі акції та знижки →</a>` : ''}`);
 }
@@ -2091,7 +2094,7 @@ function promoBannerHTML() {
   if (sp) { p = { ...p, d: sp[0] }; btn = sp[1] === 'welcome' ? '<button type="button" class="pbtn" data-promo="welcome">Застосувати −10%</button>'
     : sp[1] === 'wa' ? `<a class="pbtn" href="${waRenoHref()}" target="_blank" rel="noopener">Надіслати фото</a>` : `<button type="button" class="pbtn" data-pick="${SVC_ID}">Розрахувати вартість</button>`; }
   return `<section class="block" id="promo"><div class="container"><article class="promo promo-bn ${p.cls} reveal">
-    <div class="bd"><span class="pct ${p.sm ? 'sm' : ''}">${p.pct}</span><div class="tx">${p.tag ? `<span class="pm-tag">${p.tag}</span>` : ''}<h3>${p.t.charAt(0).toUpperCase() + p.t.slice(1)}</h3><p>${p.d}</p></div>${btn}</div>
+    <div class="bd"><span class="pct ${p.sm ? 'sm' : ''}">${p.pct}</span><div class="tx">${p.tag ? `<span class="pm-tag">${p.tag}</span>` : ''}<h3>${p.t.charAt(0).toUpperCase() + p.t.slice(1)}</h3><p>${promoText(p)}</p></div>${btn}</div>
     <img class="cut" loading="lazy" alt="${p.alt}" src="${p.img}" /></article>
     <a class="promo-more" href="${pageHref('promotions')}">Усі акції та знижки →</a></div></section>`;
 }
@@ -2532,7 +2535,7 @@ function setSqm(v, fromRange) {
   const wasBig = state.sqm > 300;
   state.sqm = fromRange && v >= 301 ? 301 : v; state.touched = true;
   const rng = $('#sqmRange');
-  if (rng) { rng.value = Math.min(state.sqm, 305); rng.style.setProperty('--p', ((Math.min(state.sqm, 305) - 15) / 290 * 100) + '%'); }
+  if (rng) { rng.value = Math.min(state.sqm, 301); rng.style.setProperty('--p', ((Math.min(state.sqm, 301) - 15) / 286 * 100) + '%'); }
   if (fromRange && $('#sqmInput')) $('#sqmInput').value = state.sqm > 300 ? 300 : state.sqm;
   if ($('#tierHint')) $('#tierHint').textContent = state.sqm <= 300 ? 'тариф ' + stepLabel(state.sqm) + ' м²' : '';
   if (wasBig !== state.sqm > 300) renderCalc(); else paintOut();
