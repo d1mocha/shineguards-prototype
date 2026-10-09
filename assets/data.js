@@ -173,19 +173,26 @@ const MATTRESS = [
   { id: '120x200', w: 120, p: 100, sk: 90, min: 60 }, { id: '140x200', w: 140, p: 110, sk: 100, min: 90 }, { id: '160x200', w: 160, p: 120, sk: 110, min: 90 },
   { id: '180x200', w: 180, p: 130, sk: 120, min: 90 }, { id: '200x200', w: 200, p: 140, sk: 130, min: 90 },
 ];
-// Windows: typical sizes per type are an assumption; minutes per Notion §1.7
+/* Windows are counted by the company's instruction (Notion §1.7, sent again by the owner on 2026-10-09):
+     time = glass m² × (2 / 3 / 5 min by the soiling) + frame linear metres × (2 / 5 / 7.5 min),
+   for EVERY side that is washed — both sides is the standard job; 2–3 m high +20%; a net +10 min, blinds 10–15 min and
+   a grille +5 min per sash; a cluttered windowsill and furniture close to the window +2.5 min per window each;
+   washing during office hours +15% of all the time; +15 min of preparation once per object; the sum is rounded up to
+   15 min and told as «up to + 15 min». The rate: 36 € brutto an hour (AT, DE), 21.5 € (SK).
+   `frame` = the perimeter of the sashes plus dividers, as the instruction measures it; `glass` = m².
+   The typical sizes per type are an assumption — the instruction works from real measurements and photos. */
 const WIN_TYPES = [
-  // size = typical dimensions behind the glass area used in the time formula
-  { id: 'single', name: 'Одностулкове вікно', size: '≈ 80 × 125 см', sub: 'одна стулка',           glass: 1.0, frame: 4,   sashes: 1 },
-  { id: 'double', name: 'Двостулкове вікно',  size: '≈ 140 × 145 см', sub: 'дві стулки',           glass: 2.0, frame: 7,   sashes: 2 },
-  { id: 'door',   name: 'Балконні двері',     size: '≈ 75 × 215 см', sub: 'скляні двері',          glass: 1.6, frame: 5.5, sashes: 1 },
-  { id: 'pano',   name: 'Панорамне вікно',    size: '≈ 180 × 195 см', sub: 'велике скло до підлоги', glass: 3.5, frame: 8,   sashes: 2 },
+  { id: 'single', name: 'Одностулкове вікно', size: '≈ 80 × 125 см', sub: 'одна стулка',           glass: 1.0, frame: 4.1,  sashes: 1 },
+  { id: 'double', name: 'Двостулкове вікно',  size: '≈ 140 × 145 см', sub: 'дві стулки',           glass: 2.0, frame: 8.6,  sashes: 2 },
+  { id: 'door',   name: 'Балконні двері',     size: '≈ 75 × 215 см', sub: 'скляні двері',          glass: 1.6, frame: 5.8,  sashes: 1 },
+  { id: 'pano',   name: 'Панорамне вікно',    size: '≈ 180 × 195 см', sub: 'велике скло до підлоги', glass: 3.5, frame: 11.4, sashes: 2 },
 ];
+const WIN_EXTRA = { net: 10, blinds: 12.5, grid: 5, sill: 2.5, furn: 2.5, high: .2, workhours: .15, prep: 15 };
 // Business glass: the sizes are typical ones (an assumption), the time formula is the same as at home.
 // `inner` — a partition is washed from both sides and both of them are inside.
 const WIN_TYPES_BIZ = [
-  { id: 'boffice', ico: 'double', name: 'Офісне вікно', size: '≈ 140 × 145 см', sub: 'дві стулки', glass: 2.0, frame: 7, sashes: 2 },
-  { id: 'bdoor', ico: 'door', name: 'Скляні двері', size: '≈ 90 × 215 см', sub: 'вхідні або внутрішні', glass: 1.9, frame: 5.5, sashes: 1 },
+  { id: 'boffice', ico: 'double', name: 'Офісне вікно', size: '≈ 140 × 145 см', sub: 'дві стулки', glass: 2.0, frame: 8.6, sashes: 2 },
+  { id: 'bdoor', ico: 'door', name: 'Скляні двері', size: '≈ 90 × 215 см', sub: 'вхідні або внутрішні', glass: 1.9, frame: 6.1, sashes: 1 },
   { id: 'bshow', ico: 'pano', name: 'Вітрина', size: '≈ 250 × 220 см', sub: 'одне велике скло', glass: 5.5, frame: 6, sashes: 1 },
   { id: 'bpano', ico: 'pano', name: 'Панорамне скло / фасадна секція', size: '≈ 180 × 300 см', sub: 'скло до підлоги', glass: 5.4, frame: 8, sashes: 1 },
   { id: 'bpart', ico: 'single', name: 'Скляна перегородка', size: '≈ 100 × 250 см', sub: 'секція, з обох боків', glass: 2.5, frame: 2, sashes: 1, inner: true },
