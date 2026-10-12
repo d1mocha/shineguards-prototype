@@ -1177,13 +1177,31 @@ const TEAM_GALLERY = [
   { key: 'fridge', file: 'work-fridge.jpg', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Чистота навіть там, де не видно', pos: '50% 0%' },
   { key: 'team', file: 'team-portrait.jpg', alt: 'Три клінерки Shine Guards у формі на дивані', cap: 'Команда, якій довіряють чистоту', pos: '32% 50%' },
 ];
-// The photo a page opens the carousel with — its `key`; a page without an entry opens with the first one, and the
-// other photos keep their order. Pages:
-// 'home:private', 'home:business', 'about' and 'object:<id>' (hotels, offices, shops, restaurants, kitchens, gyms,
-// medical, cars, bizcenters, cinemas, beauty, malls).
-const GALLERY_MAIN = {};
-// the photo in the first screen of the About page
-const ABOUT_PHOTO = { file: 'team-group.jpg', alt: 'Команда клінерів Shine Guards у формі' };
+// Photos the owner gave to single pages (Oct 2026): such a photo opens the carousel on its page and is not shown on the
+// others. Their captions are mine.
+const GALLERY_EXTRA = [
+  { key: 'vacuum', file: 'work-vacuum.jpg', alt: 'Клінерка Shine Guards пилососить паркет у вітальні', cap: 'Чистота без ваших зусиль', pos: '50% 67%' },
+  { key: 'oven', file: 'work-oven.jpg', alt: 'Клінерка Shine Guards миє духовку всередині', cap: 'Чисто й усередині', pos: '70% 50%' },
+  { key: 'steam', file: 'work-steam.jpg', alt: 'Клінерка Shine Guards чистить умивальник парогенератором', cap: 'Проти складних забруднень', pos: '50% 45%' },
+  { key: 'window', file: 'work-window.jpg', alt: 'Клінерка Shine Guards миє скло балконних дверей', cap: 'Без розводів', pos: '50% 84%' },
+  { key: 'towels', file: 'work-towels.jpg', alt: 'Клінерка Shine Guards у білих рукавичках розкладає рушники на полиці', cap: 'Готово для гостей', pos: '50% 38%' },
+];
+// The photo a page opens the carousel with — its `key` (from either list); a page without an entry opens with the first
+// photo, and the other photos keep their order. Pages: 'home:private', 'home:business', 'list', 'about',
+// 'object:<id>' (hotels, offices, shops, restaurants, kitchens, gyms, medical, cars, bizcenters, cinemas, beauty, malls),
+// 'service:private:<id>' (basic, general, deep, moveout, windows, reno, chem, extras) and 'service:business:<id>'
+// (klining, basic, general, deep, windows, airbnb, extras, moveout, reno). The owner named the home services and the
+// hotels / apartments; their business namesakes take the same photo, except the extras (ironing is a home service).
+const GALLERY_MAIN = {
+  'service:private:basic': 'vacuum', 'service:business:basic': 'vacuum',
+  'service:private:general': 'oven', 'service:business:general': 'oven',
+  'service:private:deep': 'steam', 'service:business:deep': 'steam',
+  'service:private:windows': 'window', 'service:business:windows': 'window',
+  'service:private:extras': 'ironing',
+  'object:hotels': 'towels', 'service:business:airbnb': 'towels',
+};
+// the photo in the first screen of the About page: the team (the carousel of that page goes without it)
+const ABOUT_PHOTO = { file: 'team-portrait.jpg', alt: 'Три клінерки Shine Guards у формі на дивані', pos: '40% 50%' };
 // the first screen of the business object pages: three other frames next to the numbers (the gallery below shows the rest)
 const HERO_PHOTOS = [
   { id: '1SN_s3e8lYuGUDLhUNEmrL6Vp9Sb9CPOb', alt: 'Клінерка Shine Guards протирає скляний стіл у вітальні', pos: '62% 50%' },

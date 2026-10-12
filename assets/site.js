@@ -1467,11 +1467,12 @@ function reviewsSec() {
 // a team photo: the web copy in assets/team; the single-file build has no assets folder and carries the photos inside
 const teamSrc = (sl) => (SINGLE ? SINGLE.team[sl.file] : `${ROOT}assets/team/${sl.file}`);
 // the page whose main photo GALLERY_MAIN names
-const galKey = () => (PAGE === 'home' ? `home:${state.mode}` : PAGE === 'object' ? `object:${SVC_ID}` : PAGE);
+const galKey = () => (PAGE === 'home' ? `home:${state.mode}` : PAGE === 'object' ? `object:${SVC_ID}` : PAGE === 'service' ? `service:${state.mode}:${SVC_ID}` : PAGE);
 // The carousel of the team at work: the page's main photo comes first, the rest keep their order; every photo has a caption
 function teamGalleryHTML() {
-  const main = TEAM_GALLERY.find((sl) => sl.key === GALLERY_MAIN[galKey()]);
-  const slides = main ? [main, ...TEAM_GALLERY.filter((sl) => sl !== main)] : TEAM_GALLERY;
+  const base = PAGE === 'about' ? TEAM_GALLERY.filter((sl) => sl.key !== 'team') : TEAM_GALLERY; // About shows the team in its first screen
+  const main = [...base, ...GALLERY_EXTRA].find((sl) => sl.key === GALLERY_MAIN[galKey()]);
+  const slides = main ? [main, ...base.filter((sl) => sl !== main)] : base;
   return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} /><figcaption class="tg-cap">${sl.cap}</figcaption></figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="Попереднє фото">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="Наступне фото">›</button></div></div>`;
 }
@@ -1927,7 +1928,7 @@ function pageList() {
   return heroHTML({ crumbs: [['Головна', homeHref('private')], ['Послуги для дому']], eyebrow: 'Послуги для фізичних осіб', h1: `Послуги прибирання для дому <span class="accent">у ${c.loc}</span>`,
     lead: 'Вдома хочеться відпочивати, а не прибирати. Беремо це на себе — від регулярного прибирання до складних випадків після ремонту чи переїзду.', trust: TRUST_P, stats: STATS_PRIVATE })
     + servicesSec('Усі послуги для дому', `Ціни для міста ${c.name}.`, SVC_ORDER.private, 'private')
-    + reviewsSec() + compareSec() + homePromos() + faqSec() + contactsSec();
+    + reviewsSec() + compareSec() + aboutSec(null, { noStats: true }) + homePromos() + faqSec() + contactsSec();
 }
 /* Package pages (basic / general / deep). Three pages — three different jobs: each explains its own package first
    and only then compares the three, so the pages are not copies with a swapped heading. */
@@ -2053,14 +2054,14 @@ function pageService() {
     const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
     return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
       + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`)
-      + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
+      + aboutSec() + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
       + `<section class="block" id="start"><div class="container"><div class="final-cta reveal"><div><h2>${s.final[0]}</h2><p>${s.final[1]}</p></div>
           <div class="fc-btns">${cal ? `<button type="button" class="fc-btn home" data-tocalc>${CALC_SVG}${s.final[2]}</button>` : `<button type="button" class="fc-btn home" data-open="book" data-bizgoal="Комерційна пропозиція">${s.final[2]}</button>`}<a class="fc-btn biz" href="${waHref(s.waText)}" target="_blank" rel="noopener">${SOC.wa}Надіслати фото</a></div></div></div></section>`
       + relatedSec(kind, s.related);
   }
   // package page: (when to choose it) → what is in it → the three side by side → how it goes → reviews → what next →
   // its own questions → one more button → other services
-  if (tier) return hero + (TIER_PAGE[tier].when ? whenSec(tier) : '') + tierInclSec(tier) + compareSec() + stepsSec('private') + proofSec() + promoBannerHTML()
+  if (tier) return hero + (TIER_PAGE[tier].when ? whenSec(tier) : '') + tierInclSec(tier) + compareSec() + aboutSec(null, { noStats: true }) + stepsSec('private') + proofSec() + promoBannerHTML()
     + faqSec(fillFaq(TIER_PAGE[tier].faq, tier), faqTitle, true) + finalCalcSec(TIER_PAGE[tier].final, tier) + relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.');
   // single-service pages: own blocks → how we work → reviews → Welcome bonus → own questions → one more button → other services
   const solo = kind === 'private' && SOLO_PAGE[SVC_ID];
@@ -2068,12 +2069,14 @@ function pageService() {
     const own = { moveout: () => movesSec() + inclSec(s) + prepSec('moveout', 'Як підготувати квартиру до прибирання'), windows: () => winInclSec() + winPriceSec(),
       reno: () => renoInclSec() + prepSec('reno', 'Важливо перед приїздом команди'), extras: extrasPricesSec, chem: extrasPricesSec }[SVC_ID]();
     // after a renovation the last call is to send photos, not to count a price
-    return hero + own + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + (solo.promo ? promoBannerHTML() : '') + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true)
+    return hero + own + aboutSec(null, { noStats: true }) + stepsSec(s.steps, 'Як ми це робимо') + proofSec() + (solo.promo ? promoBannerHTML() : '') + faqSec(fillFaq(solo.faq, PRICE_KEY[SVC_ID]), faqTitle, true)
       + (SVC_ID === 'reno' ? finalWaSec(solo.final) : finalCalcSec(solo.final, SVC_ID))
       + (SVC_ID === 'extras' ? relatedSec(kind, s.related, 'У генеральне й глибоке прибирання частина цих послуг уже входить.', 'Потрібне прибирання всієї квартири?') : relatedSec(kind, s.related, 'Можливо, вам підійде інший формат прибирання.'));
   }
   return hero
     + (s.incl === 'tier' ? compareSec() : inclSec(s))
+    // the apartments service page is the twin of the hotels page: the same reasons next to the photos
+    + (kind === 'business' && SVC_ID === 'airbnb' ? aboutSec(null, { adv: OBJECTS.hotels.adv, sub: OBJECTS.hotels.advSub }) : aboutSec())
     + stepsSec(s.steps || (kind === 'private' ? 'private' : 'business'), s.steps && !['private', 'business'].includes(s.steps) ? 'Як ми це робимо' : 'Всього 4 простих кроки до бездоганної чистоти')
     + proofSec()
     + relatedSec(kind, s.related)
@@ -2227,7 +2230,7 @@ function objRelatedSec(cur) {
 function pageAbout() {
   return heroHTML({ crumbs: [['Головна', homeHref()], ['Про нас']], kicker: 'Про Shine Guards', h1: 'Будуємо сервіс прибирання, якому можна <span class="accent">довірити свій простір</span>',
     lead: 'Shine Guards — професійний сервіс прибирання для дому та бізнесу. Ми поєднуємо перевірену команду, чіткі стандарти, контроль якості та персональний супровід.', trust: ABOUT_FACTS,
-    side: `<div class="hero-photo"><img alt="${ABOUT_PHOTO.alt}" src="${teamSrc(ABOUT_PHOTO)}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
+    side: `<div class="hero-photo"><img alt="${ABOUT_PHOTO.alt}" src="${teamSrc(ABOUT_PHOTO)}" style="object-position:${ABOUT_PHOTO.pos}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
     + statsStripSec(STATS_PRIVATE) + storySec() + missionSec() + peopleSec() + principlesSec() + audienceSec() + socialProofSec() + finalCtaSec() + contactsSec();
 }
 function storySec() {
