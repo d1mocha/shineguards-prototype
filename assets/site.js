@@ -79,11 +79,12 @@ const soloState = (cfg) => ({ kind: 0, area: cfg.area[3], time: cfg.timeDef || '
   counts: Object.fromEntries((cfg.counts || []).map(([k, , n]) => [k, n])), flags: new Set() });
 if (SOLO_B) state.bs = soloState(SOLO_B);
 // The business home counts by area as the object pages do, in three questions: type → area → visits a week (owner,
-// Oct 2026: the client never picks cleaners or hours). The chosen type takes that object's norms with all its zones;
-// the object page refines the rest. Apartments and windows have calculators of their own — those chips lead there.
+// Oct 2026: the client never picks cleaners or hours). It counts the type it opens with (an office) by that object's
+// norms with all its zones. A type chosen there opens the page of that object, where the rest is refined (owner,
+// 2026-10-12: a choice in a calculator leads to its page — in business as well).
 const LITE = PAGE === 'home' && state.mode === 'business';
 const LITE_OBJ = { office: 'offices', restaurant: 'restaurants', gym: 'gyms', shop: 'shops' };
-const lite = { area: false, freq: false }; // what the visitor has set by hand — kept when the type changes
+const lite = { area: false, freq: false }; // what the visitor has set by hand — it goes along to the page of the chosen type
 function liteSet(obj) {
   const area = state.bs && lite.area ? state.bs.area : null;
   SOLO_ID = LITE_OBJ[obj] || null; SOLO_B = SOLO_ID ? BIZ_SOLO[SOLO_ID] : null;
@@ -1047,10 +1048,10 @@ function setBsArea(v, fromRange) {
   if (fromRange && $('#bsArea')) $('#bsArea').value = v;
   paintOut();
 }
-// the business home: three questions; «→» marks the two types whose calculator lives on a page of its own
+// the business home: three questions; a type chip opens the page of that object (objTarget)
 function liteInputs() {
   const b = state.biz, cfg = SOLO_B, st = state.bs;
-  const h = qLabel(1, 'Тип обʼєкта') + `<div class="objs">${BIZ_OBJ.map((o) => `<button type="button" class="obj" data-obj="${o.id}" aria-pressed="${b.obj === o.id}">${ic(o.icon)}${o.name}${LITE_OBJ[o.id] || o.id === 'other' ? '' : '<span class="go" aria-hidden="true">→</span>'}</button>`).join('')}</div>`;
+  const h = qLabel(1, 'Тип обʼєкта') + `<div class="objs">${BIZ_OBJ.map((o) => `<button type="button" class="obj" data-obj="${o.id}" aria-pressed="${b.obj === o.id}">${ic(o.icon)}${o.name}</button>`).join('')}</div>`;
   if (!cfg) return h + BIZ_NOTE_OTHER;
   if (country() === 'sk') return h + BIZ_NOTE_SK;
   const [aq, amin, amax] = cfg.area, rv = Math.min(amax, Math.max(amin, st.area)), pct = ((rv - amin) / (amax - amin) * 100).toFixed(1);
@@ -1438,7 +1439,8 @@ function openChecklist(k) {
 function objectsSec() {
   const also = [['windows', 'Миття вікон'], ['reno', 'Прибирання після ремонту'], ['general', 'Генеральне прибирання'], ['deep', 'Глибоке прибирання'], ['moveout', 'Переїзд офісу'], ['extras', 'Додаткові послуги']];
   return sec('objects', 'Клінінг для різних типів бізнесу', 'Оберіть свій обʼєкт — покажемо, що саме робимо, і порахуємо ціну.', `<div class="objgrid main">${OBJ_MAIN.concat(OBJ_MORE).map(objTile).join('')}</div>
-    <div class="also"><span>Також виконуємо:</span>${also.map(([id, n]) => `<a href="${svcHref(id, 'business')}">${n}</a>`).join('')}</div>`);
+    <div class="also"><span>Також виконуємо:</span>${also.map(([id, n]) => `<a href="${svcHref(id, 'business')}">${n}</a>`).join('')}</div>
+    <div class="also obj-none"><span>Немає вашого типу обʼєкта?</span><button type="button" class="lnk" data-open="book" data-bizgoal="Комерційна пропозиція">Залиште заявку — розрахуємо індивідуально</button></div>`);
 }
 function bizTermsSec() {
   return sec('terms', 'Умови для великих обʼєктів', '', `<div class="terms">
@@ -2586,13 +2588,16 @@ function restoreCalc() {
   state.touched = true;
   return snap;
 }
-// Every object in the calculator has its own page: choosing one opens it, with the schedule already set
+// Every object in the calculator has its own page: choosing one opens it, with what the visitor has set by hand —
+// the area and the visits a week from the business home, the schedule from the pages with cleaners and hours
 function objTarget(obj) {
   if (obj === 'windows') return PAGE === 'service' && SVC_ID === 'windows' ? null : svcHref('windows', 'business');
   const id = OBJ_PAGE[obj];
   if (!id || (PAGE === 'object' && PAGE_OBJ.calc.obj === obj) || (obj === 'apartments' && PAGE === 'service' && SVC_ID === 'airbnb')) return null;
-  const b = state.biz, keep = state.touched && obj !== 'apartments' ? `?bf=${b.freq}&bh=${b.hours}&bc=${b.cleaners}` : '';
-  return objHref(id) + keep;
+  const b = state.biz;
+  const keep = obj === 'apartments' ? '' : LITE ? [lite.area && state.bs ? `ba=${state.bs.area}` : '', lite.freq ? `bf=${b.freq}` : ''].filter(Boolean).join('&')
+    : state.touched ? `bf=${b.freq}&bh=${b.hours}&bc=${b.cleaners}` : '';
+  return objHref(id) + (keep ? `?${keep}` : '');
 }
 function applyParams() {
   if (params.get('mode') && GLOBAL_PAGE) { state.mode = params.get('mode') === 'business' ? 'business' : 'private'; store.set('sg-mode', state.mode); }
@@ -2762,7 +2767,11 @@ document.addEventListener('click', (e) => {
   // calculator + drawer controls
   const b0 = state.biz;
   if (d.type) return goType(d.type) || setType(d.type);
-  if (d.obj) { const to = LITE && LITE_OBJ[d.obj] ? null : objTarget(d.obj); if (to) { track('calc_type', { type: d.obj }); location.href = to; return; } }
+  if (d.obj) {
+    // «Інший обʼєкт» has no page of its own: on the business home it leads to the list of all object types
+    if (LITE && d.obj === 'other' && $('#objects')) { track('calc_type', { type: d.obj }); $('#objects').scrollIntoView({ behavior: 'smooth' }); return; }
+    const to = objTarget(d.obj); if (to) { track('calc_type', { type: d.obj }); location.href = to; return; }
+  }
   state.touched = true;
   if (d.freq) { track('calc_freq', { freq: d.freq }); state.freq = d.freq; if (d.freq === 'once' || d.freq === 'monthly') state.planUp = null; renderCalc(); return; }
   if (d.planup) { state.planUp = d.planup; renderCalc(); return; }

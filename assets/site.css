@@ -1800,8 +1800,7 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 /* city list in the header: own arrow right after the name; the width is set by fitCity() */
 .city-select { appearance: none; -webkit-appearance: none; padding: 4px 16px 4px 0; text-overflow: ellipsis;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 8l5 5 5-5' fill='none' stroke='%23021024' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center / 13px; }
-/* the business home calculator: «→» on the types that open a calculator of their own; a link to the full one */
-.calc.v2 .objs .obj .go { margin-left: 2px; color: var(--muted); font-weight: 600; }
+/* the business home calculator: a link to the full one */
 .lite-more { display: inline-block; margin-top: 14px; font: 600 13px Inter, sans-serif; color: var(--blue); text-decoration: none; }
 .lite-more:hover { text-decoration: underline; }
 /* business object pages: the numbers and photos of the team under the first-screen points */
@@ -1868,3 +1867,10 @@ article.cs:hover { transform: none; border-color: #E3EAF3; }
 .wz-next { flex: 1; padding: 13px 18px; border-radius: 14px; font-size: 15.5px; box-shadow: 0 12px 22px -14px rgba(11,99,229,.75); }
 .wz-next:disabled { box-shadow: none; }
 .wz-back { flex: none; }
+
+/* ═════════ Round 25: every choice in a calculator opens its page ═════════ */
+/* under the list of object types: a way out for an object that is not in it */
+.also.obj-none { margin-top: 10px; }
+.also .lnk { font-size: inherit; text-decoration: none; text-align: left; }
+.also .lnk:hover { text-decoration: underline; }
+@media (max-width: 700px) { .also.obj-none { margin-top: 6px; } .also .lnk { padding: 8px 0; } }
