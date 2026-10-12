@@ -1398,7 +1398,7 @@ function compareSec() {
       <ul class="zones"><li class="zt base"><span class="zt-ics">${ic('sofa')}${ic('oven')}${ic('bath')}</span><span><b>Кімнати, кухня, ванна й туалет</b><small>${PKG_BASE[k]}</small><span class="vh"> — входить</span></span><i class="zb" aria-hidden="true">✓</i></li>${PLAN_WORKS.map((w) => tile(w, k)).join('')}</ul>
       <div class="plan-x">${k === 'basic' ? `<span class="px-reg">${REPEAT_SVG}Регулярно — знижка до 7%</span>` : giftsRow(k)}</div>
       <button type="button" class="plan-more" data-cklist="${k}">Повний чек-лист · ${pkgTasks(k)} ${tasksWord(pkgTasks(k))} →</button>
-      <button type="button" class="plan-go" data-pick="${k}">${k === t ? '✓ Обрано' : 'Обрати ' + TYPES[k].name.toLowerCase()}</button>
+      <button type="button" class="plan-go" data-pick="${k}">${k === t && !typeTarget(k) ? '✓ Обрано' : 'Обрати ' + TYPES[k].name.toLowerCase()}</button>
     </article>`;
   };
   const pick = own === 'general'
@@ -2546,6 +2546,46 @@ function applyPreset(p) {
     if (obj === 'windows') state.win.sides = 2;
   }
 }
+/* Every cleaning type has a page of its own, so a type chosen in the home calculator — its buttons, «Обрати» in the
+   comparison, «+ додати» on a package card — opens that page (owner, Oct 2026: «що б не обрав у калькуляторі, має вести
+   на сторінку цієї послуги»). What is already set — the area, the schedule, the extras, the windows — goes along in the
+   tab's session storage, so the visitor goes on with the same flat instead of starting over. On the page of the type
+   itself the choice stays in place. */
+const CARRY = 'sg-calc';
+let CARRIED = null; // the answers this page was opened with, as they were stored
+const carryPut = (raw) => { try { sessionStorage.setItem(CARRY, raw); } catch (e) { /* no storage: the page opens with its defaults */ } };
+const typeTarget = (t) => (P() && SVCS.private[t] && !(PAGE === 'service' && SVC_ID === t) ? svcHref(t, 'private') : null);
+function goType(t, extra = {}, query = '') {
+  const to = typeTarget(t); if (!to) return false;
+  track('calc_type', { type: t });
+  const st = state;
+  carryPut(JSON.stringify({ to: t, city: st.city, at: Date.now(), sqm: st.sqm, freq: st.freq, planUp: st.planUp, move: st.move, flat: [...st.flat], hours: st.hours, uph: st.uph, matt: st.matt,
+    mattBoth: st.mattBoth, rugs: st.rugs, carpet: st.carpet, hcl: st.hcl, win: st.win, chemCats: [...st.chemCats], welcome: st.ui.welcome, extras: st.ui.extras, dr: [...st.drOpen], ...extra }));
+  location.href = to + (CALC_B ? query : `?calc=a${query.replace('?', '&')}`);
+  return true;
+}
+function restoreCalc() {
+  let snap = null;
+  try { CARRIED = sessionStorage.getItem(CARRY); sessionStorage.removeItem(CARRY); snap = JSON.parse(CARRIED || 'null'); } catch (e) { /* no storage */ }
+  // only on the page the visitor was sent to, in the same city and right after the choice
+  if (!snap || PAGE !== 'service' || !P() || snap.to !== SVC_ID || snap.city !== state.city || !(Date.now() - snap.at < 60000)) { CARRIED = null; return null; }
+  const num = (v, lo, hi, def) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : def);
+  const counts = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([, v]) => +v > 0).map(([k, v]) => [k, +v]));
+  const list = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []);
+  state.sqm = Math.round(num(snap.sqm, 15, 999, state.sqm));
+  if (FREQ.some((f) => f.id === snap.freq)) state.freq = snap.freq;
+  state.planUp = TYPES[snap.planUp] ? snap.planUp : null;
+  if (snap.move === 'in' || snap.move === 'out') state.move = snap.move;
+  state.flat = new Set(list(snap.flat).filter((id) => FLAT.some((x) => x.id === id))); state.chemCats = new Set(list(snap.chemCats));
+  state.hours = counts(snap.hours); state.uph = counts(snap.uph); state.matt = counts(snap.matt); state.mattBoth = !!snap.mattBoth;
+  state.rugs = Math.round(num(snap.rugs, 0, 99, 0)); state.carpet = num(snap.carpet, 0, 40, 0); state.hcl = num(snap.hcl, 0, 12, 0);
+  Object.keys(state.win).forEach((k) => { if (snap.win && typeof snap.win[k] === typeof state.win[k]) state.win[k] = snap.win[k]; });
+  if (!WIN_DIRT[state.win.dirt]) state.win.dirt = 'basic';
+  state.ui.welcome = !!snap.welcome; state.ui.extras = !!snap.extras;
+  if (list(snap.dr).length) state.drOpen = new Set(list(snap.dr));
+  state.touched = true;
+  return snap;
+}
 // Every object in the calculator has its own page: choosing one opens it, with the schedule already set
 function objTarget(obj) {
   if (obj === 'windows') return PAGE === 'service' && SVC_ID === 'windows' ? null : svcHref('windows', 'business');
@@ -2667,7 +2707,8 @@ document.addEventListener('click', (e) => {
   if (d.open === 'drawer') return openDrawer(state.type === 'chem' ? 'uph' : null);
   if (d.open === 'book') { if (b.id === 'ctaMain') state.touched = true; /* the price was on screen — book exactly that */ track(b.id === 'ctaMain' ? 'calc_cta' : b.id === 'fab' ? 'fab_click' : 'book_click', { type: P() ? state.type : state.biz.obj, price: headline(compute()) || '' }); bizGoal = d.bizgoal || null; if (d.bizgoal && P()) { state.mode = 'business'; } return openModal(); }
   if (d.addto) { // a work that is not in the package: choose that package and open its group of extras in the calculator
-    const [k, g] = d.addto.split(':'); closeAll(); if (state.type !== k) setType(k); state.touched = true;
+    const [k, g] = d.addto.split(':'); closeAll(); if (goType(k, { open: g })) return;
+    if (state.type !== k) setType(k); state.touched = true;
     return openDrawer(g);
   }
   if (d.case != null) { // another client's case of the same object type
@@ -2675,12 +2716,14 @@ document.addEventListener('click', (e) => {
     $('#caseBody').innerHTML = caseHTML(list[state.caseIdx]); $$('.cs-tabs .chip').forEach((x, k) => x.setAttribute('aria-pressed', k === state.caseIdx)); return;
   }
   if (d.cklist) { openChecklist(d.cklist); return; }
-  if (d.pick) { closeAll(); setType(d.pick); toCalc(); return; }
+  if (d.pick) { closeAll(); if (goType(d.pick)) return; setType(d.pick); toCalc(); return; }
   if (d.faqcat != null) { state.faqCat = +d.faqcat; renderFaq(); return; }
   if (d.promo) {
     if (d.promo === 'regular') {
       if (!P() || !$('#calcIn')) { location.href = svcHref('basic', 'private') + '?freq=weekly'; return; }
-      if (!isRegType()) state.type = 'basic'; state.freq = 'weekly'; state.touched = true; renderCalc(); toCalc();
+      state.freq = 'weekly';
+      if (!isRegType() && goType('basic', {}, '?freq=weekly')) return;
+      if (!isRegType()) state.type = 'basic'; state.touched = true; renderCalc(); toCalc();
     } else if (d.promo === 'volume' || d.promo === 'apt') {
       if (P() || !$('#calcIn')) { location.href = homeHref('business') + '?promo=' + d.promo; return; }
       if (d.promo === 'apt' && !(PAGE === 'service' && SVC_ID === 'airbnb')) { location.href = svcHref('airbnb', 'business') + '?promo=apt'; return; }
@@ -2718,7 +2761,7 @@ document.addEventListener('click', (e) => {
   if (d.bsa) { const a = state.bs.adds; if (a.has(d.bsa)) a.delete(d.bsa); else a.add(d.bsa); state.touched = true; renderCalc(); return; }
   // calculator + drawer controls
   const b0 = state.biz;
-  if (d.type) return setType(d.type);
+  if (d.type) return goType(d.type) || setType(d.type);
   if (d.obj) { const to = LITE && LITE_OBJ[d.obj] ? null : objTarget(d.obj); if (to) { track('calc_type', { type: d.obj }); location.href = to; return; } }
   state.touched = true;
   if (d.freq) { track('calc_freq', { freq: d.freq }); state.freq = d.freq; if (d.freq === 'once' || d.freq === 'monthly') state.planUp = null; renderCalc(); return; }
@@ -2756,10 +2799,16 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAll(); closeMenus(); } });
 
 /* ═════════ INIT ═════════ */
+const carried = restoreCalc(); // first: the type and the sides of the windows are then set by the page itself
 applyPreset((PAGE_SVC || PAGE_OBJ || {}).calc);
+if (carried) {
+  if (!(PLAN_UP[state.type] || []).includes(state.planUp)) state.planUp = null;
+  if (state.drOpen.has('kitchen') && firstExtra() !== 'kitchen') state.drOpen = new Set([firstExtra()]); // no kitchen group where all of it is in the package
+}
 applyParams();
 if (LITE) liteSet(state.biz.obj);
 render();
+if (carried && carried.open) openDrawer(carried.open);
 // A hosting that lets the browser keep pages for minutes (GitHub Pages: 10) may show the previous build right after a
 // publish. The page asks for the current build id past every cache and, if it is behind, reloads itself (twice at most).
 if (!SINGLE && location.protocol !== 'file:') (() => {
@@ -2768,7 +2817,7 @@ if (!SINGLE && location.protocol !== 'file:') (() => {
     const cur = t.trim(); if (!/^[0-9a-f]{10}$/.test(cur)) return; // no such file on the local server
     if (cur === mine) { store.set('sg-reload', ''); return; }
     const n = +store.get('sg-reload') || 0; if (n >= 2) return;
-    store.set('sg-reload', String(n + 1)); location.reload();
+    store.set('sg-reload', String(n + 1)); if (CARRIED) carryPut(CARRIED); location.reload();
   }).catch(() => {});
 })();
 const ANCHOR = SINGLE ? ROUTE.anchor : location.hash.slice(1);
