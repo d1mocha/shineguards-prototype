@@ -322,7 +322,14 @@ def build_single(path):
     """The whole site in one HTML file; pages are addressed by the URL hash."""
     logo = 'data:image/svg+xml;base64,' + base64.b64encode(read('assets', 'logo.svg').encode('utf-8')).decode('ascii')
     seo = {f'/{rel}/': list(meta['seo']) for rel, meta in page_list()}
-    cfg = json.dumps({'logo': logo, 'seo': seo}, ensure_ascii=False)
+    # the single file has no assets folder next to it: the team photos travel inside it
+    team_dir = os.path.join(HERE, 'assets', 'team')
+    team = {}
+    for name in sorted(os.listdir(team_dir)):
+        if name.lower().endswith('.jpg'):
+            with open(os.path.join(team_dir, name), 'rb') as f:
+                team[name] = 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode('ascii')
+    cfg = json.dumps({'logo': logo, 'seo': seo, 'team': team}, ensure_ascii=False)
     icon = 'data:image/svg+xml;base64,' + base64.b64encode(read('assets', 'favicon.svg').encode('utf-8')).decode('ascii')
     out = SINGLE_TEMPLATE.format(icon=icon, css=read('assets', 'site.css'), cfg=inline_js(cfg),
                                  data_js=inline_js(read('assets', 'data.js')), site_js=inline_js(read('assets', 'site.js')))

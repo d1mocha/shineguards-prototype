@@ -1464,11 +1464,16 @@ function reviewsSec() {
     <div class="container sec-head reveal"><div><h2 class="sec-title" style="max-width:540px">Що говорять про нас наші клієнти?</h2><p class="sec-sub">Останні відгуки з Google · перекладено українською.</p></div>${gScore()}</div>
     ${revWheelHTML()}</section>`;
 }
-// a team photo: the local optimised copy; the single-file build (no assets folder) takes the same frame from Drive
-const teamSrc = (sl, w) => SINGLE || !sl.file ? DPH(sl.id, w) : `${ROOT}assets/team/${sl.file}`;
-function teamGalleryHTML(biz, noGroup) {
-  const all = TEAM_GALLERY.filter((sl) => !sl.only || sl.only === state.mode), slides = noGroup ? all.filter((sl) => !sl.team) : all;
-  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${sl.team
+// a team photo: the web copy in assets/team; the single-file build has no assets folder and carries the photos inside
+const teamSrc = (sl) => (SINGLE ? SINGLE.team[sl.file] : `${ROOT}assets/team/${sl.file}`);
+// the page whose main photo GALLERY_MAIN names
+const galKey = () => (PAGE === 'home' ? `home:${state.mode}` : PAGE === 'object' ? `object:${SVC_ID}` : PAGE);
+// The carousel of the team at work. The page's main photo comes first, the rest keep their order; the first slide
+// carries the «our team» badge unless the page shows the team next to it already (noBadge).
+function teamGalleryHTML(biz, noBadge) {
+  const main = TEAM_GALLERY.find((sl) => sl.key === GALLERY_MAIN[galKey()]);
+  const slides = main ? [main, ...TEAM_GALLERY.filter((sl) => sl !== main)] : TEAM_GALLERY;
+  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${!i && !noBadge
       ? `<figcaption class="fbadge">${ic('people')}<span><b>Прибирає наша команда</b>${P() ? 'Офіційно працевлаштовані клінери, відповідальність застрахована' : 'Офіційно оформлені та перевірені працівники, відповідальність застрахована'}</span></figcaption>`
       : `<figcaption class="tg-cap">${!P() && sl.capB ? sl.capB : sl.cap}</figcaption>`}</figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="Попереднє фото">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="Наступне фото">›</button></div></div>`;
@@ -2225,7 +2230,7 @@ function objRelatedSec(cur) {
 function pageAbout() {
   return heroHTML({ crumbs: [['Головна', homeHref()], ['Про нас']], kicker: 'Про Shine Guards', h1: 'Будуємо сервіс прибирання, якому можна <span class="accent">довірити свій простір</span>',
     lead: 'Shine Guards — професійний сервіс прибирання для дому та бізнесу. Ми поєднуємо перевірену команду, чіткі стандарти, контроль якості та персональний супровід.', trust: ABOUT_FACTS,
-    side: `<div class="hero-photo"><img alt="Команда клінерів Shine Guards у формі" referrerpolicy="no-referrer" src="${teamSrc(TEAM_GALLERY[0])}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
+    side: `<div class="hero-photo"><img alt="${ABOUT_PHOTO.alt}" src="${teamSrc(ABOUT_PHOTO)}" /><div class="fbadge">${ic('pin')}<span><b>Команда Shine Guards</b>Відень · Грац · Мюнхен · Братислава</span></div></div>` })
     + statsStripSec(STATS_PRIVATE) + storySec() + missionSec() + peopleSec() + principlesSec() + audienceSec() + socialProofSec() + finalCtaSec() + contactsSec();
 }
 function storySec() {

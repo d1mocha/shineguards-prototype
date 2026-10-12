@@ -1160,23 +1160,27 @@ const OBJ_MORE = ['bizcenters', 'cinemas', 'beauty', 'malls'];
 const CASES = {};
 const OBJ_PAGE = { office: 'offices', restaurant: 'restaurants', gym: 'gyms', shop: 'shops', apartments: 'hotels' };
 const CUT = (v, f) => `https://res.cloudinary.com/dbiy7qyfe/image/upload/h_640,f_auto,q_auto/${v}/${f}`;
-// Photos of the team (photo shoot, April): optimised copies live in assets/team. `id` is the same frame in the owner's
-// Google Drive folder — the single-file build has no assets folder next to it and shows the photo from there.
+// A frame of the photo shoot straight from the owner's Google Drive folder (the first-screen photos of the object pages)
 const DPH = (id, w = 1600) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
-// [0] is the team portrait (carries the "our team" badge); the rest are working shots with a short caption
+// The photo carousel: eight photos the owner chose (Oct 2026), the same on every page and in his order; web copies live
+// in assets/team. The first photo of a page carries the «our team» badge, the rest a short caption. `pos` is the part of
+// the frame the carousel keeps (it is wider than a portrait photo and narrower than a landscape one).
 const TEAM_GALLERY = [
-  { file: 'team-group.jpg', id: '1D90VHEk3WgNUqbgqGvXulib022nUrcmp', alt: 'Команда клінерів Shine Guards у формі', team: true, only: 'business' },
-  { id: '1Gl8Ss7fA7aOXGlnU-bv1sDMYlwODTNVE', alt: 'Команда клінерів Shine Guards у квартирі', team: true, only: 'private', pos: '50% 30%' },
-  { file: 'work-team.jpg', id: '1YoQiDQkufjsNacBn9TumkHgjKVmNuX7Z', alt: 'Клінерка Shine Guards протирає скляний стіл, колеги прибирають вітальню', cap: 'Працюємо командою', pos: '55% 50%' },
-  { id: '1Ea8A7Buk9lEtgLeTszfyscD8ahfGllga', alt: 'Дві клінерки Shine Guards прибирають кухню', cap: 'Кухня командою', pos: '45% 50%' },
-  { id: '1xRlguUOV3HARtLEQ2GraP6F2NB89fy38', alt: 'Клінерка Shine Guards чистить духовку', cap: 'Духовка всередині', pos: '55% 45%' },
-  { file: 'work-detail.jpg', id: '1WD5k0ZAld3PCfTQZDrDXQUPms64Nm2ZV', alt: 'Клінерка Shine Guards у рукавичках протирає стіл серветкою', cap: 'Увага до деталей', pos: '70% 50%' },
-  { id: '1jqAVl0zIvb0s8Fsr4q-Wfhvi5A5xPnag', alt: 'Клінерка Shine Guards пилососить підлогу', cap: 'Підлога начисто', pos: '62% 35%' },
-  { id: '1uMIUQovxgWLaXKnibQkw4ehD_DBgrriQ', alt: 'Клінерка Shine Guards протирає дзеркало у ванній', cap: 'Дзеркала до блиску', pos: '70% 40%' },
-  { file: 'work-room.jpg', id: '1SArKm8VBW6DxBxgXP4bQCrrnSitd_qrv', alt: 'Три клінерки Shine Guards прибирають вітальню', cap: 'Свій інвентар і засоби' },
-  { id: '1A1y_GB028JIzIHtns-htyD8o_6rECyHZ', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Холодильник усередині', pos: '68% 40%' },
-  { file: 'team-sofa.jpg', id: '1i1TeVN1HkytFcGGD7a_DbKhkQ-Bm5qtg', alt: 'Три клінерки Shine Guards на дивані', cap: 'Люди, яким довіряють дім', capB: 'Люди, яким довіряють обʼєкти' },
+  { key: 'piano', file: 'work-piano.jpg', alt: 'Три клінерки Shine Guards прибирають вітальню та кухню: протирають рояль, світильник і стільницю', cap: 'Працюємо командою', pos: '62% 50%' },
+  { key: 'living', file: 'work-living.jpg', alt: 'Клінерки Shine Guards прибирають вітальню: протирають скляний стіл, пилососять підлогу, доглядають за рослиною', cap: 'Свій інвентар і засоби', pos: '42% 50%' },
+  { key: 'ironing', file: 'work-ironing.jpg', alt: 'Клінерка Shine Guards прасує одяг', cap: 'Прасування', pos: '28% 50%' },
+  { key: 'lamp', file: 'work-lamp.jpg', alt: 'Клінерка Shine Guards протирає світильник серветкою', cap: 'Увага до деталей', pos: '60% 50%' },
+  { key: 'wardrobe', file: 'work-wardrobe.jpg', alt: 'Клінерка Shine Guards у білих рукавичках розвішує одяг у шафі', cap: 'Порядок у шафах', pos: '72% 50%' },
+  { key: 'bedroom', file: 'work-bedroom.jpg', alt: 'Клінерка Shine Guards знімає пил зі світильника у спальні', cap: 'Спальня без пилу', pos: '50% 60%' },
+  { key: 'kitchen', file: 'work-kitchen.jpg', alt: 'Дві клінерки Shine Guards миють витяжку та духовку на кухні', cap: 'Кухня: витяжка й духовка', pos: '50% 46%' },
+  { key: 'fridge', file: 'work-fridge.jpg', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Холодильник усередині', pos: '50% 8%' },
 ];
+// The photo a page opens the carousel with — its `key`; a page without an entry opens with the first one. Pages:
+// 'home:private', 'home:business', 'about' and 'object:<id>' (hotels, offices, shops, restaurants, kitchens, gyms,
+// medical, cars, bizcenters, cinemas, beauty, malls).
+const GALLERY_MAIN = {};
+// the photo in the first screen of the About page
+const ABOUT_PHOTO = { file: 'team-group.jpg', alt: 'Команда клінерів Shine Guards у формі' };
 // the first screen of the business object pages: three other frames next to the numbers (the gallery below shows the rest)
 const HERO_PHOTOS = [
   { id: '1SN_s3e8lYuGUDLhUNEmrL6Vp9Sb9CPOb', alt: 'Клінерка Shine Guards протирає скляний стіл у вітальні', pos: '62% 50%' },
