@@ -1468,14 +1468,11 @@ function reviewsSec() {
 const teamSrc = (sl) => (SINGLE ? SINGLE.team[sl.file] : `${ROOT}assets/team/${sl.file}`);
 // the page whose main photo GALLERY_MAIN names
 const galKey = () => (PAGE === 'home' ? `home:${state.mode}` : PAGE === 'object' ? `object:${SVC_ID}` : PAGE);
-// The carousel of the team at work. The page's main photo comes first, the rest keep their order; the first slide
-// carries the «our team» badge unless the page shows the team next to it already (noBadge).
-function teamGalleryHTML(biz, noBadge) {
+// The carousel of the team at work: the page's main photo comes first, the rest keep their order; every photo has a caption
+function teamGalleryHTML() {
   const main = TEAM_GALLERY.find((sl) => sl.key === GALLERY_MAIN[galKey()]);
   const slides = main ? [main, ...TEAM_GALLERY.filter((sl) => sl !== main)] : TEAM_GALLERY;
-  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} />${!i && !noBadge
-      ? `<figcaption class="fbadge">${ic('people')}<span><b>Прибирає наша команда</b>${P() ? 'Офіційно працевлаштовані клінери, відповідальність застрахована' : 'Офіційно оформлені та перевірені працівники, відповідальність застрахована'}</span></figcaption>`
-      : `<figcaption class="tg-cap">${!P() && sl.capB ? sl.capB : sl.cap}</figcaption>`}</figure>`).join('')}</div>
+  return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} /><figcaption class="tg-cap">${sl.cap}</figcaption></figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="Попереднє фото">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="Наступне фото">›</button></div></div>`;
 }
 const logoMarquee = () => `<div class="container"><div class="logo-row">${LOGOS.map((l) => `<span class="logo-tile"><img loading="lazy" alt="${l.alt}" src="${l.src}" /></span>`).join('')}</div></div>`;
@@ -1491,7 +1488,7 @@ function statsHTML(list) {
 function aboutSec(title, opts = {}) {
   const adv = (opts.adv || (P() ? ADV_PRIVATE : ADV_BIZ)).map(([icn, h, p]) => `<div class="adv-item">${ic(icn)}<h3>${h}</h3><p>${p}</p></div>`).join('');
   const stats = opts.noStats ? '' : statsHTML(P() ? STATS_PRIVATE : STATS_BIZ);
-  const body = opts.noPhoto ? `${stats}<div class="adv-grid wide">${adv}</div>` : `${stats}<div class="team">${teamGalleryHTML(!P(), opts.noGroup)}<div class="adv-grid">${adv}</div></div>`;
+  const body = opts.noPhoto ? `${stats}<div class="adv-grid wide">${adv}</div>` : `${stats}<div class="team">${teamGalleryHTML()}<div class="adv-grid">${adv}</div></div>`;
   return sec('about', title || (P() ? 'Чому клієнти обирають Shine Guards' : 'Чому бізнес обирає Shine Guards'),
     opts.sub || (P() ? '' : 'Надійні люди, фіксована ціна й відповідальність сторін — закріплені в договорі.'), body);
 }
@@ -2241,7 +2238,7 @@ function missionSec() {
 }
 function peopleSec() {
   const f = FOUNDER;
-  return sec('people', 'Люди за Shine Guards', '', `<div class="people">${teamGalleryHTML(false, true)}
+  return sec('people', 'Люди за Shine Guards', '', `<div class="people">${teamGalleryHTML()}
     <div class="people-t reveal"><p class="people-lead">За кожним прибиранням — конкретні люди: офіційно працевлаштовані клінери, супервайзери, які перевіряють результат, і менеджери, які ведуть кожне замовлення від заявки до завершення.</p>
       <figure class="founder"><blockquote>${f.quote}</blockquote><figcaption><span class="fd-ava" aria-hidden="true">${f.initials}</span><span><b>${f.name}</b><small>${f.role}</small></span></figcaption></figure></div></div>`);
 }

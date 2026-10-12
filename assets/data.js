@@ -1162,20 +1162,23 @@ const OBJ_PAGE = { office: 'offices', restaurant: 'restaurants', gym: 'gyms', sh
 const CUT = (v, f) => `https://res.cloudinary.com/dbiy7qyfe/image/upload/h_640,f_auto,q_auto/${v}/${f}`;
 // A frame of the photo shoot straight from the owner's Google Drive folder (the first-screen photos of the object pages)
 const DPH = (id, w = 1600) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
-// The photo carousel: eight photos the owner chose (Oct 2026), the same on every page and in his order; web copies live
-// in assets/team. The first photo of a page carries the «our team» badge, the rest a short caption. `pos` is the part of
-// the frame the carousel keeps (it is wider than a portrait photo and narrower than a landscape one).
+// The photo carousel: nine photos the owner chose (Oct 2026), the same on every page and in his order — eight working
+// shots and the team portrait at the end; web copies live in assets/team. Every photo carries a short caption: 1, 2, 4,
+// 6, 7 and 9 are the owner's words, 3, 5 and 8 he left to me. `pos` is the part of the frame the carousel keeps (it is
+// wider than a portrait photo and narrower than a landscape one).
 const TEAM_GALLERY = [
-  { key: 'piano', file: 'work-piano.jpg', alt: 'Три клінерки Shine Guards прибирають вітальню та кухню: протирають рояль, світильник і стільницю', cap: 'Працюємо командою', pos: '62% 50%' },
-  { key: 'living', file: 'work-living.jpg', alt: 'Клінерки Shine Guards прибирають вітальню: протирають скляний стіл, пилососять підлогу, доглядають за рослиною', cap: 'Свій інвентар і засоби', pos: '42% 50%' },
-  { key: 'ironing', file: 'work-ironing.jpg', alt: 'Клінерка Shine Guards прасує одяг', cap: 'Прасування', pos: '28% 50%' },
-  { key: 'lamp', file: 'work-lamp.jpg', alt: 'Клінерка Shine Guards протирає світильник серветкою', cap: 'Увага до деталей', pos: '60% 50%' },
-  { key: 'wardrobe', file: 'work-wardrobe.jpg', alt: 'Клінерка Shine Guards у білих рукавичках розвішує одяг у шафі', cap: 'Порядок у шафах', pos: '72% 50%' },
-  { key: 'bedroom', file: 'work-bedroom.jpg', alt: 'Клінерка Shine Guards знімає пил зі світильника у спальні', cap: 'Спальня без пилу', pos: '50% 60%' },
-  { key: 'kitchen', file: 'work-kitchen.jpg', alt: 'Дві клінерки Shine Guards миють витяжку та духовку на кухні', cap: 'Кухня: витяжка й духовка', pos: '50% 46%' },
-  { key: 'fridge', file: 'work-fridge.jpg', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Холодильник усередині', pos: '50% 8%' },
+  { key: 'piano', file: 'work-piano.jpg', alt: 'Три клінерки Shine Guards прибирають вітальню та кухню: протирають рояль, світильник і стільницю', cap: 'Офіційно працевлаштовані клінери', pos: '62% 50%' },
+  { key: 'living', file: 'work-living.jpg', alt: 'Клінерки Shine Guards прибирають вітальню: протирають скляний стіл, пилососять підлогу, доглядають за рослиною', cap: 'Відповідальність застрахована', pos: '42% 50%' },
+  { key: 'ironing', file: 'work-ironing.jpg', alt: 'Клінерка Shine Guards прасує одяг', cap: 'Економимо ваш час', pos: '28% 50%' },
+  { key: 'lamp', file: 'work-lamp.jpg', alt: 'Клінерка Shine Guards протирає світильник серветкою', cap: 'Дбайливе ставлення до речей', pos: '60% 50%' },
+  { key: 'wardrobe', file: 'work-wardrobe.jpg', alt: 'Клінерка Shine Guards у білих рукавичках розвішує одяг у шафі', cap: 'Кожна річ — на своєму місці', pos: '72% 50%' },
+  { key: 'bedroom', file: 'work-bedroom.jpg', alt: 'Клінерка Shine Guards знімає пил зі світильника у спальні', cap: 'Увага до деталей', pos: '50% 60%' },
+  { key: 'kitchen', file: 'work-kitchen.jpg', alt: 'Дві клінерки Shine Guards миють витяжку та духовку на кухні', cap: 'Широкий спектр послуг', pos: '50% 36%' },
+  { key: 'fridge', file: 'work-fridge.jpg', alt: 'Клінерка Shine Guards миє холодильник усередині', cap: 'Чистота навіть там, де не видно', pos: '50% 0%' },
+  { key: 'team', file: 'team-portrait.jpg', alt: 'Три клінерки Shine Guards у формі на дивані', cap: 'Команда, якій довіряють чистоту', pos: '32% 50%' },
 ];
-// The photo a page opens the carousel with — its `key`; a page without an entry opens with the first one. Pages:
+// The photo a page opens the carousel with — its `key`; a page without an entry opens with the first one, and the
+// other photos keep their order. Pages:
 // 'home:private', 'home:business', 'about' and 'object:<id>' (hotels, offices, shops, restaurants, kitchens, gyms,
 // medical, cars, bizcenters, cinemas, beauty, malls).
 const GALLERY_MAIN = {};

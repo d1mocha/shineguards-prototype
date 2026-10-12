@@ -1092,7 +1092,6 @@ section.block.tight .stats { margin-top: 0; }
 .tg-dots { display: flex; gap: 5px; }
 .tg-dots i { width: 7px; height: 7px; border-radius: 50%; background: #C9D5E4; transition: background .2s, width .2s; }
 .tg-dots i.on { background: var(--blue); width: 18px; border-radius: 4px; }
-.tg .fbadge { bottom: 44px; }
 .ps-btn { border: 1.5px solid var(--blue); background: #fff; color: var(--blue); border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 14px; white-space: nowrap; text-decoration: none; display: inline-block; }
 .ps-btn:hover { background: var(--blue); color: #fff; }
 /* B2B: mini-cases under the client logos */
