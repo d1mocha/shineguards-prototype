@@ -19,17 +19,21 @@ function parseRoute(hash) {
   if (qi >= 0) s = s.slice(0, qi);
   const [a, b, c, kind, slug] = s.split('/').filter(Boolean);
   const stored = CITIES[store.get('sg-city')] ? store.get('sg-city') : 'vienna';
-  let meta = { page: 'home', kind: 'private', city: stored };
-  if (a === 'ua' && ['about', 'promotions', 'contacts', 'partnership'].includes(b)) meta = { page: b };
+  const lang = ['ua', 'ru', 'en', 'de', 'sk'].includes(b) ? b : 'ua';
+  let meta = { page: 'home', kind: 'private', city: stored, lang: 'ua' };
+  if (['ua', 'ru', 'en', 'de', 'sk'].includes(a) && ['about', 'promotions', 'contacts', 'partnership'].includes(b)) meta = { page: b, lang: a };
   else if (CITIES[a] && c === 'services' && SVCS[kind]) {
-    const id = slug && Object.keys(SVCS[kind]).find((k) => slug === `${SVCS[kind][k].slug}-in-${a}`);
-    meta = id ? { page: 'service', kind, svc: id, city: a } : { page: kind === 'private' ? 'list' : 'home', kind, city: a };
+    const id = slug && Object.keys(SVCS[kind]).find((k) => slug === `${slugFor(kind === 'private' ? 'p' : 'b', k, lang)}-in-${citySlugFor(a, lang)}`);
+    meta = id ? { page: 'service', kind, svc: id, city: a, lang } : { page: kind === 'private' ? 'list' : 'home', kind, city: a, lang };
   } else if (CITIES[a] && c === 'locations') {
-    const id = kind && Object.keys(OBJECTS).find((k) => kind === `${OBJECTS[k].slug}-in-${a}`);
-    meta = id ? { page: 'object', kind: 'business', svc: id, city: a } : { page: 'home', kind: 'business', city: a };
-  } else if (CITIES[a]) meta = { page: 'home', kind: 'private', city: a };
+    const id = kind && Object.keys(OBJECTS).find((k) => kind === `${slugFor('o', k, lang)}-in-${citySlugFor(a, lang)}`);
+    meta = id ? { page: 'object', kind: 'business', svc: id, city: a, lang } : { page: 'home', kind: 'business', city: a, lang };
+  } else if (CITIES[a]) meta = { page: 'home', kind: 'private', city: a, lang };
   return { meta, query, anchor };
 }
+// the address part of a service or an object in a language (p — home, b — business, o — object) and of a city
+function slugFor(kind, id, lang) { return lang === 'ua' ? (kind === 'o' ? OBJECTS[id].slug : SVCS[kind === 'p' ? 'private' : 'business'][id].slug) : SLUGS[lang][kind][id]; }
+function citySlugFor(city, lang) { return (CITY_SLUG[lang] && CITY_SLUG[lang][city]) || city; }
 const ROUTE = SINGLE ? parseRoute(location.hash) : null;
 const META = SINGLE ? ROUTE.meta : document.querySelector('meta[name="sg"]').dataset;
 const ROOT = SINGLE ? '#/' : META.root || './';
@@ -38,6 +42,43 @@ const LOGO = SINGLE ? SINGLE.logo : ROOT + 'assets/logo.svg';
 const PAGE = META.page;
 const SVC_ID = META.svc || null;
 const GLOBAL_PAGE = ['about', 'promotions', 'contacts', 'partnership'].includes(PAGE);
+
+/* ═════════ LANGUAGES ═════════
+   Five languages: ua — the source of every text, ru, en, de, sk. A page knows its language from the address
+   (/{city}/{lang}/…, /{lang}/about/); assets/i18n/{lang}.js brings its dictionary — Ukrainian text → translation — and
+   tl() looks a text up there (a missing one stays Ukrainian). The texts of data.js are translated once, below. */
+const LANG = META.lang || 'ua';
+const HTML_LANG = { ua: 'uk', ru: 'ru', en: 'en', de: 'de', sk: 'sk' };
+const LOCALE = { ua: 'uk-UA', ru: 'ru-RU', en: 'en-GB', de: 'de-AT', sk: 'sk-SK' }[LANG];
+const I18N = (SINGLE ? (SINGLE.i18n || {})[LANG] : window.SG_I18N) || {};
+const ORIG = new Map(); // a translated text of data.js → its Ukrainian source (for phrases looked up whole)
+// tl('Ціна від {0}', x): the translation, with {0}, {1} … filled in
+const tl = (s, ...a) => { let r = LANG !== 'ua' && I18N[s] != null ? I18N[s] : s; if (a.length) r = r.replace(/\{(\d+)\}/g, (m, i) => (a[+i] != null ? a[+i] : '')); return r; };
+const orig = (s) => ORIG.get(s) || s;
+const lc = (s) => (LANG === 'de' ? s : s.toLowerCase()); // a German noun keeps its capital letter
+// plural forms: the Ukrainian 'one|few|many' is the key; the dictionary gives the forms of the language in the order of PL_ORDER
+const PL_ORDER = { ua: ['one', 'few', 'many'], ru: ['one', 'few', 'many'], sk: ['one', 'few', 'other'], en: ['one', 'other'], de: ['one', 'other'] };
+const PLR = new Intl.PluralRules(LOCALE);
+const pl = (n, forms) => { const f = tl(forms).split('|'), i = PL_ORDER[LANG].indexOf(PLR.select(n)); return f[i >= 0 && i < f.length ? i : f.length - 1]; };
+function translateDeep(o, seen) {
+  if (!o || typeof o !== 'object' || seen.has(o)) return;
+  seen.add(o);
+  for (const k of Object.keys(o)) {
+    const dsc = Object.getOwnPropertyDescriptor(o, k);
+    if (!dsc || !('value' in dsc)) continue; // a getter (the prices of the extras) is not text
+    const v = dsc.value;
+    if (typeof v === 'string') { const tr = I18N[v]; if (tr != null && tr !== v) { ORIG.set(tr, v); o[k] = tr; } }
+    else if (v && typeof v === 'object') translateDeep(v, seen);
+  }
+}
+if (LANG !== 'ua') {
+  const seen = new Set();
+  [CITIES, CTRY, TYPES, ROOMS, INC_PILLS, INC_PLUS, CAN_ADD, GIFTS, FLAT, HOURLY, UPH, MATTRESS, WIN_TYPES, WIN_TYPES_BIZ, WIN_BIZ, WIN_DIRT,
+    FREQ, BIZ_OBJ, BIZ_FREQ, BIZ_SOLO_FREQ, BIZ_SOLO, HOSP, APT, SVCS, PAY_QA, TIER_PAGE, SOLO_PAGE, HOME_CARDS, INCL, BIZ_PRICES, STEPS,
+    REVIEWS, LOGOS, OBJECTS, CASES, TEAM_GALLERY, GALLERY_EXTRA, ABOUT_PHOTO, HERO_PHOTOS, TEAM_CUTS, BIZ_CASES, STATS_PRIVATE, STATS_BIZ,
+    ADV_PRIVATE, ADV_BIZ, PROMOS, FAQ, PARTNER, ABOUT_FACTS, STORY, MISSION, FOUNDER, PRINCIPLES].forEach((x) => translateDeep(x, seen));
+  document.documentElement.lang = HTML_LANG[LANG];
+}
 const params = new URLSearchParams(SINGLE ? ROUTE.query : location.search);
 const CALC_B = params.get('calc') !== 'a'; // ?calc=a → previous calculator (comparison / A-B test)
 if (SINGLE) {
@@ -97,10 +138,12 @@ function liteSet(obj) {
 /* ═════════ HELPERS ═════════ */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const eur = (n) => Math.round(n).toLocaleString('uk-UA') + ' €';
-const eur2 = (n) => { const v = Math.round(n * 100) / 100; return v.toLocaleString('uk-UA', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }) + ' €'; };
-const dec = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
-const tasksWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'завдання' : m10 === 1 && m100 !== 11 ? 'завдання' : 'завдань'; };
+const nf = (n, o) => n.toLocaleString(LOCALE, o);
+const money = (x) => (LANG === 'en' ? `€${x}` : `${x} €`); // English puts the sign first
+const eur = (n) => money(nf(Math.round(n)));
+const eur2 = (n) => { const v = Math.round(n * 100) / 100; return money(nf(v, { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 })); };
+const dec = (n) => { const x = String(Math.round(n * 100) / 100); return LANG === 'en' ? x : x.replace('.', ','); };
+const tasksWord = (n) => pl(n, 'завдання|завдання|завдань');
 const ceil15 = (m) => Math.ceil(m / 15) * 15;
 const dur = (m) => m < 60 ? `${m} хв` : `${dec(m / 60)} год`;
 const f1 = (n) => +n.toFixed(1);
@@ -151,12 +194,20 @@ const SOC = {
 };
 
 /* ═════════ LINKS (prototype pages mirror production URLs) ═════════ */
-const homeHref = (mode = state.mode, city = state.city) => mode === 'business' ? `${ROOT}${city}/ua/services/business/${IDX}` : `${ROOT}${city}/ua/${IDX}`;
-const listHref = (city = state.city) => `${ROOT}${city}/ua/services/private/${IDX}`;
-const svcHref = (id, kind, city = state.city) => `${ROOT}${city}/ua/services/${kind}/${SVCS[kind][id].slug}-in-${city}/${IDX}`;
-const pageHref = (name) => `${ROOT}ua/${name}/${IDX}`;
-const objHref = (id, city = state.city) => `${ROOT}${city}/ua/locations/${OBJECTS[id].slug}-in-${city}/${IDX}`;
-const prodUrl = (id, kind, city = state.city) => `${BASE}/${city}/ua/services/${kind}/${SVCS[kind][id].slug}-in-${city}`;
+const homeHref = (mode = state.mode, city = state.city, lang = LANG) => mode === 'business' ? `${ROOT}${city}/${lang}/services/business/${IDX}` : `${ROOT}${city}/${lang}/${IDX}`;
+const listHref = (city = state.city, lang = LANG) => `${ROOT}${city}/${lang}/services/private/${IDX}`;
+const svcHref = (id, kind, city = state.city, lang = LANG) => `${ROOT}${city}/${lang}/services/${kind}/${slugFor(kind === 'private' ? 'p' : 'b', id, lang)}-in-${citySlugFor(city, lang)}/${IDX}`;
+const pageHref = (name, lang = LANG) => `${ROOT}${lang}/${name}/${IDX}`;
+const objHref = (id, city = state.city, lang = LANG) => `${ROOT}${city}/${lang}/locations/${slugFor('o', id, lang)}-in-${citySlugFor(city, lang)}/${IDX}`;
+const prodUrl = (id, kind, city = state.city) => `${BASE}/${city}/${LANG}/services/${kind}/${slugFor(kind === 'private' ? 'p' : 'b', id, LANG)}-in-${citySlugFor(city, LANG)}`;
+// the same page in another language — the language menu
+function langHref(lang) {
+  if (PAGE === 'home') return homeHref(state.mode, state.city, lang);
+  if (PAGE === 'list') return listHref(state.city, lang);
+  if (PAGE === 'service') return svcHref(SVC_ID, state.mode, state.city, lang);
+  if (PAGE === 'object') return objHref(SVC_ID, state.city, lang);
+  return pageHref(PAGE, lang);
+}
 // «Для дому» / «Для бізнесу» in the header always lead to that side's home page, from any page (owner, Oct 2026) —
 // not to the twin of the current page and not to the same page in the other mode
 function modeHref(m) { return homeHref(m); }
@@ -282,7 +333,7 @@ const carpetRate = (m2, r = R()) => (m2 <= 10 ? r.carpet[0] : m2 <= 15 ? r.carpe
 const carpetPrice = (m2, r = R()) => (m2 ? Math.max(r.rug, m2 * carpetRate(m2, r)) : 0);
 const carpetLbl = (m2, r = R()) => (!m2 ? 'не потрібно' : m2 <= carpetSmall(r) ? `до ${carpetSmall(r)} м² · ${eur(r.rug)}` : `${m2} м² · ${eur(carpetPrice(m2, r))}`);
 const carpetTiers = (r = R()) => `до ${carpetSmall(r)} м² — ${eur(r.rug)} · до 10 м² — ${r.carpet[0]} €/м² · 10–15 м² — ${r.carpet[1]} €/м² · від 15 м² — ${r.carpet[2]} €/м²`;
-const aptWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? 'апартамент' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'апартаменти' : 'апартаментів'; };
+const aptWord = (n) => pl(n, 'апартамент|апартаменти|апартаментів');
 function computePriv() {
   const city = CITIES[state.city], r = R();
   const out = { lines: [], gifts: [], total: 0, listTotal: 0, extrasCount: 0 };
@@ -307,7 +358,7 @@ function computePriv() {
     const n = state.hours[h.id] || 0;
     if (!n || isIncluded(h.id) || (state.type === 'moveout' && h.id === 'ironing')) continue; // not offered for move-out, so never charged there
     out.lines.push({ name: `${h.name} · ${n} год`, price: n * r.extraHour }); out.extrasCount++;
-    if (h.id === 'ironing' && (state.type === 'general' || state.type === 'deep')) out.gifts.push({ name: 'Подарунок: 1 година прасування', price: -Math.min(n, 1) * r.extraHour });
+    if (h.id === 'ironing' && (state.type === 'general' || state.type === 'deep')) out.gifts.push({ name: 'Подарунок: 1 година прасування', price: -Math.min(n, 1) * r.extraHour, gift: true });
   }
   // hourly cleaning: one cleaner by the hour, for tasks that fit no package
   if (alone && state.hcl) { out.lines.push({ name: `Погодинне прибирання · ${state.hcl} год`, price: state.hcl * r.hourly }); out.extrasCount++; }
@@ -321,7 +372,7 @@ function computePriv() {
     }
     if (minutes > 0) {
       const rg = winRange(minutes, r.windowHour);
-      out.lines.push({ name: `${label} · ${winCount()} шт (орієнтовно)`, price: rg.lo }); out.extrasCount++;
+      out.lines.push({ name: `${label} · ${winCount()} шт (орієнтовно)`, price: rg.lo, g: 'win' }); out.extrasCount++;
       out.approx = true; out.win = rg;
     }
   }
@@ -345,7 +396,7 @@ function computePriv() {
     for (const m of MATTRESS) {
       const n = state.matt[m.id] || 0; if (!n) continue;
       const p = state.mattBoth ? Math.round(m.p * 1.25) : m.p;
-      out.lines.push({ name: `Матрац ${m.id.replace('x', '×')} × ${n}${state.mattBoth ? ' · 2 сторони' : ''}`, price: p * n }); out.extrasCount++;
+      out.lines.push({ name: `Матрац ${m.id.replace('x', '×')} × ${n}${state.mattBoth ? ' · 2 сторони' : ''}`, price: p * n, g: 'mat' }); out.extrasCount++;
       for (let i = 0; i < Math.min(n, 4); i++) chemUnits.push({ min: Math.round(m.min * (state.mattBoth ? 1.75 : 1)), p });
     }
   }
@@ -353,7 +404,7 @@ function computePriv() {
     const best = Array(61).fill(0);
     for (const u of chemUnits) { if (u.min > 60) continue; for (let m = 60; m >= u.min; m--) best[m] = Math.max(best[m], best[m - u.min] + u.p); }
     const free = Math.max(...best);
-    if (free > 0) out.gifts.push({ name: 'Подарунок: до 1 години хімчистки', price: -free });
+    if (free > 0) out.gifts.push({ name: 'Подарунок: до 1 години хімчистки', price: -free, gift: true });
   }
   out.listTotal = out.lines.reduce((a, l) => a + l.price, 0);
   let sum = out.listTotal + out.gifts.reduce((a, l) => a + l.price, 0);
@@ -417,7 +468,7 @@ const bizSolo = () => (SOLO_B && !P() ? SOLO_ID : null);
 const soloType = () => (SOLO_B.types ? SOLO_B.types.find((t) => t.id === state.bs.ktype) : null);
 const soloFreq = () => (BIZ_SOLO_FREQ.some(([v]) => v === state.biz.freq) ? state.biz.freq : (PAGE_OBJ || OBJECTS[SOLO_ID]).calc.freq || 3);
 const soloFreqTxt = () => (soloFreq() === 7 ? 'щодня' : `${soloFreq()}× на тиждень`);
-const soloRange = (c) => (c.range[0] === c.range[1] ? eur(c.range[0]) : `${Math.round(c.range[0]).toLocaleString('uk-UA')}–${eur(c.range[1])}`);
+const soloRange = (c) => (c.range[0] === c.range[1] ? eur(c.range[0]) : money(`${nf(Math.round(c.range[0]))}–${nf(Math.round(c.range[1]))}`));
 function computeBizSolo(id) {
   const cfg = SOLO_B, st = state.bs, b = state.biz, ctry = country();
   const base = { biz: true, solo: id, obj: b.obj, ctry, vat: CTRY[ctry].vat };
@@ -480,11 +531,12 @@ function megaItems(kind) {
     return `<a class="mega-item" href="${svcHref(id, kind)}" ${cur ? 'aria-current="page"' : ''}>${ic(s.icon)}<span><b>${cardName(kind, id)}</b><small>${svcSubline(kind, id)}</small></span></a>`;
   }).join('');
 }
-const LANGS = [['ua', 'Українська'], ['de', 'Deutsch'], ['en', 'English'], ['ru', 'Русский'], ['sk', 'Slovenčina']];
+// every language is named in itself — these names are never translated
+const LANGS = [['ua', 'Українська'], ['ru', 'Русский'], ['en', 'English'], ['de', 'Deutsch'], ['sk', 'Slovenčina']];
+const LANG_NAME = Object.fromEntries(LANGS);
 function langMenuHTML() {
-  return `<div class="lang-sw"><button type="button" class="lang" id="langBtn" aria-haspopup="true" aria-expanded="false" aria-label="Мова сайту: українська">UA ${chev}</button>
-    <div class="lang-menu" id="langMenu">${LANGS.map(([c, n]) => c === 'ua' ? `<span class="cur">${n}<b>✓</b></span>` : `<a href="${BASE}/${state.city}/${c}" target="_blank" rel="noopener" hreflang="${c}">${n}<small>${c.toUpperCase()} ↗</small></a>`).join('')}
-    <p>Прототип — українською. Інші мови відкриються на поточному сайті.</p></div></div>`;
+  return `<div class="lang-sw"><button type="button" class="lang" id="langBtn" aria-haspopup="true" aria-expanded="false" aria-label="${tl('Мова сайту')}: ${LANG_NAME[LANG]}">${LANG.toUpperCase()} ${chev}</button>
+    <div class="lang-menu" id="langMenu">${LANGS.map(([c, n]) => c === LANG ? `<span class="cur">${n}<b>✓</b></span>` : `<a href="${langHref(c)}" hreflang="${HTML_LANG[c]}" lang="${HTML_LANG[c]}">${n}<small>${c.toUpperCase()}</small></a>`).join('')}</div></div>`;
 }
 const CHAT_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 function headerHTML() {
@@ -515,7 +567,7 @@ function headerHTML() {
       <div class="mega-list">${megaItems(state.mode)}</div>
       <div class="links"><a href="${pageHref('about')}">Про нас</a><a href="${pageHref('promotions')}">Акції</a><a href="${pageHref('partnership')}">Партнерство</a><a href="${pageHref('contacts')}">Контакти</a></div>
       <div class="row2"><select data-city aria-label="Місто">${cityOptions()}</select><a class="call" href="${WA}" target="_blank" rel="noopener">WhatsApp</a></div>
-      <div class="m-meta"><span class="m-lang">${LANGS.map(([c]) => c === 'ua' ? '<b>UA</b>' : `<a href="${BASE}/${state.city}/${c}" target="_blank" rel="noopener" hreflang="${c}">${c.toUpperCase()}</a>`).join('')}</span><a class="rating" href="${GMAPS}" target="_blank" rel="noopener"><span class="g">${G_SVG}</span>4,9/5 <i class="stars">★★★★★</i></a></div>
+      <div class="m-meta"><span class="m-lang">${LANGS.map(([c]) => c === LANG ? `<b>${c.toUpperCase()}</b>` : `<a href="${langHref(c)}" hreflang="${HTML_LANG[c]}">${c.toUpperCase()}</a>`).join('')}</span><a class="rating" href="${GMAPS}" target="_blank" rel="noopener"><span class="g">${G_SVG}</span>4,9/5 <i class="stars">★★★★★</i></a></div>
     </div>
   </div></header>`;
 }
@@ -538,7 +590,7 @@ function footerHTML() {
         <p>Прибираємо 24/7 · менеджери на звʼязку щодня, 9:00–18:00</p>
         <p>Stoß im Himmel 1/21, 1010 Відень</p></div>
     </div>
-    <div class="ft-bottom"><span>© 2026 Shine Guards e.U.</span><a href="${BASE}/ua/impressum">Імпресум</a><a href="${BASE}/ua/privacy-policy">Політика конфіденційності</a>
+    <div class="ft-bottom"><span>© 2026 Shine Guards e.U.</span><a href="${BASE}/${state.city}/${LANG}/impressum">Імпресум</a><a href="${BASE}/${state.city}/${LANG}/privacy-policy">Політика конфіденційності</a>
       <span class="ft-cities">${cities}</span>
       <span class="pay"><img alt="Visa і Mastercard" src="https://www.shineguards.com/icons/payment/visa%20mc.svg" /><img alt="Stripe" src="https://www.shineguards.com/icons/payment/Stripe%20Logo%20Revised%202016%201.svg" /></span></div>
   </div></footer>`;
@@ -663,10 +715,10 @@ function privOut() {
   }
   const savings = c.gifts.length && c.listTotal > c.total ? `<span class="p-old num">${eur(c.listTotal)}</span>` : '';
   const main = c.range && Math.round(c.range[0]) !== Math.round(c.range[1]) ? rangeTxt(c.range) : `${c.approx || c.range ? '≈ ' : ''}${eur(c.total)}`;
-  const meta = c.cleaners ? `<b>${c.cleaners}</b> ${c.cleaners === 1 ? 'клінер' : 'клінери'}<br />~<b>${crewTime(c.hours)}</b>` : c.win ? `до <b>${dur(c.win.upTo)}</b>` : '';
+  const meta = c.cleaners ? `<b>${c.cleaners}</b> ${pl(c.cleaners, 'клінер|клінери|клінерів')}<br />~<b>${crewTime(c.hours)}</b>` : c.win ? `до <b>${dur(c.win.upTo)}</b>` : '';
   const flags = [`${ct.incl} · ${c.approx || c.range ? 'орієнтовна' : 'фіксована'}`];
   if (isReg()) flags.push(`<span class="ok">−${Math.round(freqDisc() * 100)}% за регулярність</span>`);
-  if (c.gifts.some((g) => g.name.startsWith('Подарунок'))) flags.push('<span class="ok">подарунок враховано</span>');
+  if (c.gifts.some((g) => g.gift)) flags.push('<span class="ok">подарунок враховано</span>');
   if (c.minApplied) flags.push(`<span class="warn">мінімальне замовлення ${eur(r.minVisit)}</span>`);
   let h = `<div class="price-box"><div class="p-label">${isReg() ? 'Ціна одного прибирання' : 'Ваша ціна'}</div>
     <div class="p-row"><div class="p-value num"><span id="pNum" data-v="${c.range ? '' : c.total}">${main}</span>${savings}</div><div class="p-meta">${meta}</div></div>`;
@@ -879,7 +931,7 @@ function aptInputsB(sk, n) {
 }
 /* Hotels page: apartments / Airbnb and apart-hotels are counted from the apartment tariff, a hotel gets an individual offer */
 const hospPage = () => !P() && ((PAGE === 'object' && SVC_ID === 'hotels') || (PAGE === 'service' && SVC_ID === 'airbnb'));
-const roomWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? 'номер' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'номери' : 'номерів'; };
+const roomWord = (n) => pl(n, 'номер|номери|номерів');
 function hospInputs() {
   const a = state.apt;
   const h = `<div class="calc-svc"><b>${ic('bed')}Готелі, апартаменти, Airbnb</b><a href="${homeHref('business')}#objects">Інший тип бізнесу</a></div>`
@@ -936,7 +988,7 @@ function privOutB() {
   const reg = isReg(), wel = !!c.welcome, cut = reg || wel, range = c.range && Math.round(c.range[0]) !== Math.round(c.range[1]);
   const main = cut ? `${c.approx ? '≈ ' : ''}${eur2(c.exact)}` : range ? rangeTxt(c.range) : `${c.approx || c.range ? '≈ ' : ''}${eur(c.total)}`;
   const was = cut ? `<span class="p-was num">${eur(reg ? c.preReg : c.preWelcome)}</span>` : c.gifts.length && c.listTotal > c.total ? `<span class="p-old num">${eur(c.listTotal)}</span>` : '';
-  const meta = c.cleaners ? `<b>${c.cleaners}</b> ${c.cleaners === 1 ? 'клінер' : 'клінери'} · ~<b>${crewTime(c.hours)}</b>` : c.win ? `до <b>${dur(c.win.upTo)}</b>` : '';
+  const meta = c.cleaners ? `<b>${c.cleaners}</b> ${pl(c.cleaners, 'клінер|клінери|клінерів')} · ~<b>${crewTime(c.hours)}</b>` : c.win ? `до <b>${dur(c.win.upTo)}</b>` : '';
   const sub = [`${c.approx || c.range ? 'Орієнтовна ціна' : 'Фіксована ціна'}${ct === 'sk' ? '' : ' з ПДВ'}`, pay];
   const meter = c.minApplied && state.type === 'chem';
   if (c.minApplied && !meter) sub.push(`мінімум ${eur(r.minVisit)}`);
@@ -1246,7 +1298,7 @@ function clearChoice(g) {
 }
 function extrasHTML() {
   const r = R(), t = state.type, c = computePriv(), alone = t === 'extras';
-  const lineSum = (re) => (c.lines || []).filter((l) => re.test(l.name)).reduce((a, l) => a + l.price, 0);
+  const lineSum = (g) => (c.lines || []).filter((l) => l.g === g).reduce((a, l) => a + l.price, 0);
   // the sum of a group and, next to it, a cross that clears the whole group at once
   const tag = (n, txt, g, has = n > 0 || !!txt) => `<span class="sum">${txt || (n ? eur(n) : '')}</span>${g && has ? `<button type="button" class="grp-x" data-xclear="${g}" aria-label="Скасувати весь вибір у цій групі" title="Скасувати вибір">×</button>` : ''}`;
   const open = (g) => state.drOpen.has(g) ? 'open' : '';
@@ -1267,7 +1319,7 @@ function extrasHTML() {
       ${hourly.map((x) => { const gift = x.id === 'ironing' && (t === 'general' || t === 'deep');
         return `<div class="row"><div class="nm">${x.name}${gift ? '<span class="badge gift">1 година у подарунок</span>' : ''}<small>${dec(r.extraHour)} € / год</small></div>
           ${stepper('h:' + x.id, state.hours[x.id] || 0, 8)}</div>`; }).join('')}</div></details>`;
-    if (!alone && t !== 'deep') h += `<details class="grp" name="drg" data-g="win" ${open('win')}><summary>${ic('window')}Миття вікон ${tag(lineSum(/^Вікна/), c.win ? '≈ ' + eur(c.win.lo) : '', 'win', winCount() > 0)} ${chev}</summary><div class="in">
+    if (!alone && t !== 'deep') h += `<details class="grp" name="drg" data-g="win" ${open('win')}><summary>${ic('window')}Миття вікон ${tag(lineSum('win'), c.win ? '≈ ' + eur(c.win.lo) : '', 'win', winCount() > 0)} ${chev}</summary><div class="in">
       ${windowsUI('drawer')}</div></details>`;
   }
   const uphSum = UPH.reduce((a, u) => a + (state.uph[u.id] || 0) * r.uph[u.id], 0);
@@ -1281,7 +1333,7 @@ function extrasHTML() {
     <div class="row" style="display:block"><div class="nm" style="display:flex;justify-content:space-between">Більший килим — за площею<b class="num" id="carpetLbl">${carpetLbl(cs, r)}</b></div>
       <input type="range" id="carpetRange" min="0" max="40" value="${cs}" style="--p:${cs / 40 * 100}%" aria-label="Площа килима" />
       <small class="muted" style="font-size:13px">${carpetTiers(r)}</small></div></div></details>`;
-  h += `<details class="grp" name="drg" data-g="mat" ${open('mat')}><summary>${ic('mattress')}Матраци ${tag(lineSum(/^Матрац/), '', 'mat')} ${chev}</summary><div class="in">
+  h += `<details class="grp" name="drg" data-g="mat" ${open('mat')}><summary>${ic('mattress')}Матраци ${tag(lineSum('mat'), '', 'mat')} ${chev}</summary><div class="in">
     <p class="note" style="margin-top:0">Оберіть розмір і кількість — ширина × довжина, см.</p>
     <div class="mats">${MATTRESS.map((m) => { const n = state.matt[m.id] || 0, p = state.mattBoth ? Math.round(m.p * 1.25) : m.p;
       return `<div class="mt ${n ? 'has' : ''}">${matIcon(m.w)}<b>${m.id.replace('x', ' × ')}</b><small>${eur(p)}</small>${stepper('m:' + m.id, n, 6)}</div>`; }).join('')}</div>
@@ -1404,7 +1456,7 @@ function compareSec() {
       <ul class="zones"><li class="zt base"><span class="zt-ics">${ic('sofa')}${ic('oven')}${ic('bath')}</span><span><b>Кімнати, кухня, ванна й туалет</b><small>${PKG_BASE[k]}</small><span class="vh"> — входить</span></span><i class="zb" aria-hidden="true">✓</i></li>${PLAN_WORKS.map((w) => tile(w, k)).join('')}</ul>
       <div class="plan-x">${k === 'basic' ? `<span class="px-reg">${REPEAT_SVG}Регулярно — знижка до 7%</span>` : giftsRow(k)}</div>
       <button type="button" class="plan-more" data-cklist="${k}">Повний чек-лист · ${pkgTasks(k)} ${tasksWord(pkgTasks(k))} →</button>
-      <button type="button" class="plan-go" data-pick="${k}">${k === t && !typeTarget(k) ? '✓ Обрано' : 'Обрати ' + TYPES[k].name.toLowerCase()}</button>
+      <button type="button" class="plan-go" data-pick="${k}">${k === t && !typeTarget(k) ? '✓ Обрано' : tl('Обрати ' + orig(TYPES[k].name).toLowerCase())}</button>
     </article>`;
   };
   const pick = own === 'general'
@@ -1438,7 +1490,7 @@ function openChecklist(k) {
   m.classList.add('wide');
   m.innerHTML = `<div class="ck-head"><div><h3 id="mTitle">${TYPES[k].full}</h3><p class="muted">Повний чек-лист · ${n} ${tasksWord(n)}${k !== 'basic' ? ' · жирним — те, що додається в цьому пакеті' : ''}</p></div><button class="x" type="button" data-close aria-label="Закрити">×</button></div>
     ${gifts ? `<div class="ck-gifts">${gifts}</div><p class="ck-note">${GIFT_NOTE[k]}</p>` : ''}<div class="ck-rooms">${rooms}</div>
-    <button class="cta" type="button" data-pick="${k}">Обрати ${TYPES[k].name.toLowerCase()} — від ${eur(cityPrices()[k][0])}</button>`;
+    <button class="cta" type="button" data-pick="${k}">${tl('Обрати ' + orig(TYPES[k].name).toLowerCase())} — від ${eur(cityPrices()[k][0])}</button>`;
   m.classList.add('on'); $('#scrim').classList.add('on');
 }
 function objectsSec() {
@@ -1511,7 +1563,7 @@ function moreServicesSec() {
 const homePromos = () => promosSec([PROMOS.private[1], PROMOS.private[2]], 'Акції та спеціальні пропозиції', true);
 // B2B: client logos right after the first screen, with how typical objects are served
 function bizTrustSec() {
-  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">Нам довіряють бізнеси у ${CITIES[state.city].loc}</h2><p class="sec-sub">Готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.</p></div></div></div>
+  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">Нам довіряють бізнеси ${CITIES[state.city].in}</h2><p class="sec-sub">Готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.</p></div></div></div>
     ${logoMarquee()}
     <div class="container"><div class="cases">${BIZ_CASES.map(([icn, t, f, d], i) => `<div class="case pop" style="--i:${i}">${ic(icn)}<div><b>${t}</b><span class="case-f">${f}</span><p>${d}</p></div></div>`).join('')}</div></div></section>`;
 }
@@ -1560,7 +1612,7 @@ function contactsSec() {
     <h3>Графік роботи</h3>
     <div class="hrow">${ic('chat')}<span><b>Менеджери на звʼязку</b><span>щодня, 9:00–18:00 — відповідаємо протягом 30 хвилин</span></span></div>
     <div class="hrow">${ic('bucket')}<span><b>Прибираємо 24/7</b><span>у будь-який день і час — вранці, ввечері, вночі, у вихідні</span></span></div>
-    <div class="hrow">${ic('pin')}<span><b>Офіс</b><span>${ADDRESS}</span><br /><a class="map" href="https://www.google.com/maps/search/?api=1&query=Sto%C3%9F+im+Himmel+1%2F21+1010+Wien" target="_blank" rel="noopener">Відкрити на карті ↗</a></span></div>
+    <div class="hrow">${ic('pin')}<span><b>Офіс</b><span>${tl(ADDRESS)}</span><br /><a class="map" href="https://www.google.com/maps/search/?api=1&query=Sto%C3%9F+im+Himmel+1%2F21+1010+Wien" target="_blank" rel="noopener">Відкрити на карті ↗</a></span></div>
     <div class="btns"><button type="button" class="btn-o" data-open="book">${P() ? 'Залишити заявку' : 'Надіслати запит'}</button></div></div>`;
   return sec('contacts', 'Звʼяжіться з нами', 'Прибираємо 24/7. Менеджери на звʼязку щодня з 9:00 до 18:00 — найшвидше у WhatsApp.', `<div class="contacts">${contactCardsHTML()}${side}</div>`);
 }
@@ -1576,7 +1628,7 @@ function inclSec(s) {
       const rows = rm.tasks.map(([name, lv]) => {
         const inc = TIER_RANK[lv] <= rank, isNew = inc && TIER_RANK[lv] === rank && rank > 0;
         return inc ? `<li class="${isNew ? 'new' : ''}"><span class="ck">✓</span><span>${name}${isNew ? '<em>нове</em>' : ''}</span></li>`
-          : `<li class="opt"><span class="ck">+</span><span>${name} <small>— ${TYPES[lv].name.toLowerCase()} або окремо</small></span></li>`;
+          : `<li class="opt"><span class="ck">+</span><span>${name} <small>— ${tl(orig(TYPES[lv].name).toLowerCase() + ' або окремо')}</small></span></li>`;
       }).join('');
       return `<div class="incl-card pop"><h3>${ic(rm.icon)}${rm.name}</h3><ul>${rows}</ul></div>`;
     }).join('')}</div>`;
@@ -1587,9 +1639,9 @@ function inclSec(s) {
   } else {
     body = inclGroups(INCL[s.incl] || []);
   }
-  return sec('incl', `Що входить у ${kind === 'business' ? 'послугу' : s.name.charAt(0).toLowerCase() + s.name.slice(1)}`, s.incl === 'tier' && TIER_RANK[s.calc.type] > 0 ? 'Синім позначено, що зʼявляється саме в цьому пакеті.' : '', body);
+  return sec('incl', kind === 'business' ? 'Що входить у послугу' : tl('Що входить у ' + orig(s.name).charAt(0).toLowerCase() + orig(s.name).slice(1)), s.incl === 'tier' && TIER_RANK[s.calc.type] > 0 ? 'Синім позначено, що зʼявляється саме в цьому пакеті.' : '', body);
 }
-const inclGroups = (groups) => `<div class="incl-grid${groups.length === 4 ? ' c4' : ''}">${groups.map((g) => `<div class="incl-card pop"><h3>${g.icon ? ic(g.icon) : ''}${g.t}</h3><ul>${g.items.map((x) => { const opt = /окремо|за запитом|додатков/i.test(x); return `<li class="${g.add ? 'add' : opt ? 'opt' : ''}"><span class="ck">${g.add || opt ? '+' : '✓'}</span><span>${x}</span></li>`; }).join('')}</ul></div>`).join('')}</div>`;
+const inclGroups = (groups) => `<div class="incl-grid${groups.length === 4 ? ' c4' : ''}">${groups.map((g) => `<div class="incl-card pop"><h3>${g.icon ? ic(g.icon) : ''}${g.t}</h3><ul>${g.items.map((x) => { const opt = /окремо|за запитом|додатков/i.test(orig(x)); return `<li class="${g.add ? 'add' : opt ? 'opt' : ''}"><span class="ck">${g.add || opt ? '+' : '✓'}</span><span>${x}</span></li>`; }).join('')}</ul></div>`).join('')}</div>`;
 /* Separate services: every line of the price list is added with one tap («+ Додати» → «✓ Додано» or a counter),
    the bar under the list keeps the chosen services and the sum to pay. The same state as the calculator above. */
 function pricesHTML() {
@@ -1621,7 +1673,7 @@ function pricesHTML() {
       <p class="note">Після чистки меблі висихають 6–12 годин: провітрюйте кімнату й не сідайте на вологу оббивку.</p></div>
   </div>`;
 }
-const svcWord = (n) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? 'послуга' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'послуги' : 'послуг'; };
+const svcWord = (n) => pl(n, 'послуга|послуги|послуг');
 function orderBarHTML() {
   const c = computePriv(), min = R().minVisit;
   if (!c.lines || !c.lines.length) return '';
@@ -1924,17 +1976,17 @@ function pageHome() {
   const c = CITIES[state.city];
   if (P()) {
     // price → proof → choice → booking
-    return heroHTML({ eyebrow: 'Ваш надійний клінінговий сервіс', h1: `Прибирання квартир і будинків <span class="accent">у ${c.loc}${SPARK}</span>`,
+    return heroHTML({ eyebrow: 'Ваш надійний клінінговий сервіс', h1: `Прибирання квартир і будинків <span class="accent">${c.in}${SPARK}</span>`,
       lead: 'Оберіть тип прибирання та площу — і одразу побачите фіксовану ціну. Разово або регулярно, без очікування дзвінка менеджера.', trust: TRUST_P, stats: STATS_PRIVATE })
       + reviewsSec() + compareSec() + moreServicesSec() + aboutSec(null, { noStats: true }) + stepsSec() + homePromos() + faqSec() + contactsSec();
   }
-  return heroHTML({ kicker: `Професійне прибирання для бізнесу у ${c.loc}`, h1: 'Беремо чистоту вашого бізнесу <span class="accent">під контроль</span>',
+  return heroHTML({ kicker: `Професійне прибирання для бізнесу ${c.in}`, h1: 'Беремо чистоту вашого бізнесу <span class="accent">під контроль</span>',
     lead: 'Регулярне прибирання, контроль якості, персональний менеджер і повний пакет документів — під ваш графік та вимоги.', trust: trustBiz() })
     + bizTrustSec() + aboutSec() + objectsSec() + stepsSec() + bizTermsSec() + faqSec() + contactsSec();
 }
 function pageList() {
   const c = CITIES[state.city];
-  return heroHTML({ crumbs: [['Головна', homeHref('private')], ['Послуги для дому']], eyebrow: 'Послуги для фізичних осіб', h1: `Послуги прибирання для дому <span class="accent">у ${c.loc}</span>`,
+  return heroHTML({ crumbs: [['Головна', homeHref('private')], ['Послуги для дому']], eyebrow: 'Послуги для фізичних осіб', h1: `Послуги прибирання для дому <span class="accent">${c.in}</span>`,
     lead: 'Вдома хочеться відпочивати, а не прибирати. Беремо це на себе — від регулярного прибирання до складних випадків після ремонту чи переїзду.', trust: TRUST_P, stats: STATS_PRIVATE })
     + servicesSec('Усі послуги для дому', `Ціни для міста ${c.name}.`, SVC_ORDER.private, 'private')
     + reviewsSec() + compareSec() + aboutSec(null, { noStats: true }) + homePromos() + faqSec() + contactsSec();
@@ -1944,14 +1996,14 @@ function pageList() {
 const CALC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M8.5 6.5h7M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M8.5 18h.01M12 18h.01M15.5 14.5V18"/></svg>';
 // when this package is the right one (the question a visitor of the deep page has: why not general?)
 function whenSec(k) {
-  return sec('when', `Коли варто обрати ${TYPES[k].full.toLowerCase()}?`, '', `<div class="principles when">${TIER_PAGE[k].when.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>
+  return sec('when', tl(`Коли варто обрати ${orig(TYPES[k].full).toLowerCase()}?`), '', `<div class="principles when">${TIER_PAGE[k].when.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>
     <p class="when-note reveal">Переїжджаєте або щойно завершили ремонт? Для цього є окремі послуги: <a href="${svcHref('moveout', 'private')}">прибирання при переїзді</a> та <a href="${svcHref('reno', 'private')}">прибирання після ремонту</a>.</p>`);
 }
 // what exactly this package covers: a few zones with concrete actions, the full checklist one click away
 function tierInclSec(k) {
   const tp = TIER_PAGE[k], n = pkgTasks(k), cnt = `${n} ${tasksWord(n)}`;
   const item = (x) => x[0] === '+' ? `<li class="new"><span class="ck">✓</span><span>${x.slice(1)}</span></li>` : `<li><span class="ck">✓</span><span>${x}</span></li>`;
-  return sec('incl', `Що входить у ${TYPES[k].full.toLowerCase()}`, tp.inclSub.replace('{n}', cnt),
+  return sec('incl', tl(`Що входить у ${orig(TYPES[k].full).toLowerCase()}`), tp.inclSub.replace('{n}', cnt),
     `<div class="incl-grid tz c${tp.zones.length === 4 ? 4 : 3}">${tp.zones.map(([icn, t, items], i) => `<div class="incl-card pop" style="--i:${i}"><h3>${ic(icn)}${t}</h3><ul>${items.map(item).join('')}</ul></div>`).join('')}</div>
     <div class="tz-foot reveal"><button type="button" class="btn-ghost" data-cklist="${k}">Переглянути всі ${cnt}</button>${tp.note ? `<p class="tz-note">${tp.note}</p>` : ''}</div>`);
 }
@@ -1960,7 +2012,7 @@ function fillFaq(list, key) {
   const c = CITIES[state.city], r = R(), cr = key && c.crew[key], n = TIER_RANK[key] != null ? pkgTasks(key) : 0;
   const half = (x) => Math.round(x * 2) / 2; // the hours of a tier are no longer whole: say them to the half hour
   const span = (a) => { const lo = half(Math.min(...a)), hi = half(Math.max(...a)); return lo === hi ? dec(lo) : `від ${dec(lo)} до ${dec(hi)}`; };
-  const vals = { loc: c.loc, min: eur(r.minVisit), rate: `${dec(r.windowHour)} €`, hourly: `${dec(r.hourly)} €`, windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '', from: key ? `від ${eur(cityPrices()[key][0])}` : '', time: cr ? span(cr.h) : '', crew: cr ? span(cr.c) : '' };
+  const vals = { loc: c.loc, in: c.in, In: c.in.charAt(0).toUpperCase() + c.in.slice(1), min: eur(r.minVisit), rate: `${dec(r.windowHour)} €`, hourly: `${dec(r.hourly)} €`, windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '', from: key ? `від ${eur(cityPrices()[key][0])}` : '', time: cr ? span(cr.h) : '', crew: cr ? span(cr.c) : '' };
   const fill = (x) => x.replace(/\{(\w+)\}/g, (m, k) => vals[k] || m);
   return list.map(([q, a]) => [fill(q), fill(a)]);
 }
@@ -2054,9 +2106,9 @@ function pageService() {
   const trust = trustFor(kind, SVC_ID);
   if (kind === 'business' && s.trust) trust[2] = [trust[2][0], s.trust];
   const requestOnly = (kind === 'private' && SVC_ID === 'reno') || (kind === 'business' && ['moveout', 'reno'].includes(SVC_ID));
-  const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">у ${c.loc}</span>`, sub: s.sub, lead: s.lead,
+  const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">${c.in}</span>`, sub: s.sub, lead: s.lead,
     facts, trust, side: requestOnly ? sideRequest() : null });
-  const faqTitle = `Питання про «${s.name.charAt(0).toLowerCase() + s.name.slice(1)}»`;
+  const faqTitle = tl(`Питання про «${orig(s.name).charAt(0).toLowerCase() + orig(s.name).slice(1)}»`);
   // business service with its own story (windows, post-renovation):
   // what is included → how it is organised → how we do it → clients → the 24-hour offer → own questions → one more button → related B2B services
   if (kind === 'business' && s.own) {
@@ -2219,12 +2271,12 @@ function pageObject() {
       : SOLO_B && SOLO_B.quote ? [['Вартість', 'після огляду'], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']]
       : [sk ? ['Ставка', 'за запитом'] : ['Регулярно, netto', `від ${dec(BIZ.rate)} € / год`], ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']];
     const keys = o.keys ? sec('keys', o.keysTitle, '', `<div class="principles when c3">${o.keys.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`) : '';
-    return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">у ${c.loc}</span>`, lead: o.lead, trust, facts, extra: heroFillHTML() })
+    return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">${c.in}</span>`, lead: o.lead, trust, facts, extra: heroFillHTML() })
       + keys + objInclSec(o) + caseSec(SVC_ID) + aboutSec(null, { adv: o.adv, sub: o.advSub, noStats: true }) + stepsSec(o.steps || 'business') + proofSec() // the numbers stand on the first screen — not twice on the page
       + faqSec(objFaq(o), o.faqTitle, true) + finalBizSec(o.final) + objRelatedSec(SVC_ID);
   }
   const price = o.calc.obj === 'other' ? ['Ціна', 'після огляду'] : o.calc.obj === 'apartments' ? ['Ціна без ПДВ', `від ${eur2(APT[sk ? 'sk' : 'at'][0])} / апартамент`] : sk ? ['Ставка', 'за запитом'] : ['Ставка без ПДВ', 'від 27 € / год'];
-  return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">у ${c.loc}</span>`, lead: o.lead, facts: [price, ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']], trust: trustBiz() })
+  return heroHTML({ crumbs, h1: `${o.h1} <span class="accent">${c.in}</span>`, lead: o.lead, facts: [price, ['Пропозиція', 'за 24 години'], ['Документи', 'договір і інвойс']], trust: trustBiz() })
     + sec('incl', 'Що входить', o.haccp ? 'Кухню прибираємо з урахуванням вимог HACCP.' : '', inclGroups(o.incl))
     + caseSec(SVC_ID)
     + aboutSec()
@@ -2330,18 +2382,18 @@ function applyJsonLd() {
   }];
   if (PAGE === 'service') {
     const s = PAGE_SVC, from = P() && PRICE_KEY[SVC_ID] ? cityPrices()[PRICE_KEY[SVC_ID]][0] : null;
-    ld.push({ '@context': 'https://schema.org', '@type': 'Service', name: `${s.name} у ${c.loc}`, serviceType: s.name, url, areaServed: { '@type': 'City', name: c.name }, provider: { '@type': 'LocalBusiness', name: 'Shine Guards' },
+    ld.push({ '@context': 'https://schema.org', '@type': 'Service', name: `${s.name} ${c.in}`, serviceType: s.name, url, areaServed: { '@type': 'City', name: c.name }, provider: { '@type': 'LocalBusiness', name: 'Shine Guards' },
       ...(from ? { offers: { '@type': 'Offer', priceCurrency: 'EUR', price: from, priceSpecification: { '@type': 'PriceSpecification', minPrice: from, priceCurrency: 'EUR' } } } : {}) });
     ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${BASE}/${state.city}/ua` },
-      { '@type': 'ListItem', position: 2, name: P() ? 'Послуги для дому' : 'Послуги для бізнесу', item: `${BASE}/${state.city}/ua/services/${state.mode}` },
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${BASE}/${state.city}/${LANG}` },
+      { '@type': 'ListItem', position: 2, name: P() ? 'Послуги для дому' : 'Послуги для бізнесу', item: `${BASE}/${state.city}/${LANG}/services/${state.mode}` },
       { '@type': 'ListItem', position: 3, name: s.name, item: url }] });
   }
   if (PAGE === 'object') {
-    ld.push({ '@context': 'https://schema.org', '@type': 'Service', name: `${PAGE_OBJ.h1} у ${c.loc}`, serviceType: PAGE_OBJ.h1, url, areaServed: { '@type': 'City', name: c.name }, provider: { '@type': 'LocalBusiness', name: 'Shine Guards' } });
+    ld.push({ '@context': 'https://schema.org', '@type': 'Service', name: `${PAGE_OBJ.h1} ${c.in}`, serviceType: PAGE_OBJ.h1, url, areaServed: { '@type': 'City', name: c.name }, provider: { '@type': 'LocalBusiness', name: 'Shine Guards' } });
     ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${BASE}/${state.city}/ua` },
-      { '@type': 'ListItem', position: 2, name: 'Послуги для бізнесу', item: `${BASE}/${state.city}/ua/services/business` },
+      { '@type': 'ListItem', position: 1, name: 'Головна', item: `${BASE}/${state.city}/${LANG}` },
+      { '@type': 'ListItem', position: 2, name: 'Послуги для бізнесу', item: `${BASE}/${state.city}/${LANG}/services/business` },
       { '@type': 'ListItem', position: 3, name: PAGE_OBJ.name, item: url }] });
   }
   if (FAQ_SET) ld.push({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ_SET.flatMap((g) => g.qa).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '') } })) });
@@ -2397,10 +2449,10 @@ function wireDynamic() {
   const io2 = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => ents.forEach((en) => {
     if (!en.isIntersecting) return; io2.unobserve(en.target);
     const el = en.target, to = +el.dataset.count, sfx = el.dataset.suffix || '', t0 = performance.now();
-    const step = (t) => { const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(to * e).toLocaleString('uk-UA') + sfx; if (k < 1) requestAnimationFrame(step); };
+    const step = (t) => { const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3); el.textContent = nf(Math.round(to * e)) + sfx; if (k < 1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
   }), { threshold: .4 }) : null;
-  counters.forEach((el) => io2 ? io2.observe(el) : (el.textContent = (+el.dataset.count).toLocaleString('uk-UA') + (el.dataset.suffix || '')));
+  counters.forEach((el) => io2 ? io2.observe(el) : (el.textContent = nf(+el.dataset.count) + (el.dataset.suffix || '')));
 }
 
 /* ═════════ MODAL ═════════ */

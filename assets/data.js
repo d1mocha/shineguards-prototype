@@ -44,10 +44,10 @@ const PRICES = {
   },
 };
 const CITIES = {
-  vienna:     { name: 'Відень',     loc: 'Відні',      country: 'at', prices: 'vienna',     crew: AT_CREW },
-  graz:       { name: 'Грац',       loc: 'Граці',      country: 'at', prices: 'graz',       crew: AT_CREW },
-  munich:     { name: 'Мюнхен',     loc: 'Мюнхені',    country: 'de', prices: 'vienna',     crew: AT_CREW }, // ціни як у Відні
-  bratislava: { name: 'Братислава', loc: 'Братиславі', country: 'sk', prices: 'bratislava', crew: SK_CREW },
+  vienna:     { name: 'Відень',     loc: 'Відні',      in: 'у Відні',      country: 'at', prices: 'vienna',     crew: AT_CREW },
+  graz:       { name: 'Грац',       loc: 'Граці',      in: 'у Граці',      country: 'at', prices: 'graz',       crew: AT_CREW },
+  munich:     { name: 'Мюнхен',     loc: 'Мюнхені',    in: 'у Мюнхені',    country: 'de', prices: 'vienna',     crew: AT_CREW }, // ціни як у Відні
+  bratislava: { name: 'Братислава', loc: 'Братиславі', in: 'у Братиславі', country: 'sk', prices: 'bratislava', crew: SK_CREW },
 };
 const CTRY = {
   at: { vat: .20, incl: 'Ціна з ПДВ 20%', pct: '20%' },
@@ -72,6 +72,33 @@ Object.entries(PKG_EXTRA_HOURS).forEach(([k, n]) => {
   Object.entries(PRICE_COUNTRY).forEach(([g, ct]) => { PRICES[g][k] = PRICES[g][k].map((p) => p + n * RATES[ct].extraHour); });
   [AT_CREW, SK_CREW].forEach((crew) => { crew[k].h = crew[k].h.map((h, i) => h + n / crew[k].c[i]); });
 });
+
+/* Page addresses in the other languages (the Ukrainian address of a page is the `slug` of its service or object).
+   The private services take the addresses of shineguards.com; the rest are new. p — services for home, b — for
+   business, o — business objects. German addresses name the city in German (…-in-wien), the others as the folder. */
+const SLUGS = {
+  ru: {
+    p: { basic: 'bazovaya-uborka', general: 'generalnaya-uborka', deep: 'glubokaya-uborka', extras: 'dopolnitelnye-uslugi', chem: 'himchistka-mebeli-i-kovrov', windows: 'myte-okon', moveout: 'uborka-zaezd-vyezd', reno: 'uborka-posle-remonta' },
+    b: { klining: 'klining-dlya-biznesa', basic: 'bazovaya-uborka', general: 'generalnaya-uborka', deep: 'glubokaya-uborka', windows: 'myte-okon', airbnb: 'uborka-airbnb-i-kratkosrochnoj-arendy', extras: 'dopolnitelnye-uslugi', moveout: 'uborka-zaezd-vyezd', reno: 'uborka-posle-remonta' },
+    o: { hotels: 'oteli-apartamenty-i-airbnb', offices: 'ofisy-i-kovorkingi', shops: 'magaziny-butiki-i-shourumy', restaurants: 'restorany-kafe-i-bary', kitchens: 'professionalnye-kuhni-i-gastronomiya', gyms: 'fitnes-centry-i-sportzaly', medical: 'medicinskie-centry-kliniki-i-stomatologii', cars: 'avtosalony-i-servisnye-centry', bizcenters: 'biznes-centry', cinemas: 'kinoteatry-teatry-i-razvlekatelnye-zony', beauty: 'salony-krasoty-spa-i-barbershopy', malls: 'torgovye-centry' },
+  },
+  en: {
+    p: { basic: 'basic-cleaning', general: 'full-scale-cleaning', deep: 'deep-cleaning', extras: 'extra-cleaning-services', chem: 'upholstery-and-carpet-cleaning', windows: 'window-cleaning', moveout: 'move-in-move-out-cleaning', reno: 'post-renovation-cleaning' },
+    b: { klining: 'commercial-cleaning', basic: 'basic-cleaning', general: 'full-scale-cleaning', deep: 'deep-cleaning', windows: 'window-cleaning', airbnb: 'airbnb-and-short-term-rental-cleaning', extras: 'extra-cleaning-services', moveout: 'move-in-move-out-cleaning', reno: 'post-renovation-cleaning' },
+    o: { hotels: 'hotels-apartments-and-airbnb', offices: 'offices-and-coworking-spaces', shops: 'shops-boutiques-and-showrooms', restaurants: 'restaurants-cafes-and-bars', kitchens: 'professional-kitchens', gyms: 'fitness-centres-and-gyms', medical: 'medical-centres-clinics-and-dental-practices', cars: 'car-dealerships-and-service-centres', bizcenters: 'business-centres', cinemas: 'cinemas-theatres-and-entertainment-venues', beauty: 'beauty-salons-spas-and-barbershops', malls: 'shopping-centres' },
+  },
+  de: {
+    p: { basic: 'unterhaltsreinigung', general: 'gruendliche-reinigung', deep: 'grundreinigung', extras: 'zusatzleistungen', chem: 'polster-und-teppichreinigung', windows: 'fensterreinigung', moveout: 'einzugs-und-auszugsreinigung', reno: 'reinigung-nach-renovierung' },
+    b: { klining: 'gewerbereinigung', basic: 'unterhaltsreinigung', general: 'gruendliche-reinigung', deep: 'grundreinigung', windows: 'fensterreinigung', airbnb: 'airbnb-und-kurzzeitvermietungsreinigung', extras: 'zusatzleistungen', moveout: 'einzugs-und-auszugsreinigung', reno: 'reinigung-nach-renovierung' },
+    o: { hotels: 'hotels-apartments-und-airbnb', offices: 'bueros-und-coworking-spaces', shops: 'geschaefte-boutiquen-und-showrooms', restaurants: 'restaurants-cafes-und-bars', kitchens: 'gastronomiekuechen', gyms: 'fitnessstudios', medical: 'arztpraxen-kliniken-und-zahnarztpraxen', cars: 'autohaeuser-und-werkstaetten', bizcenters: 'businesscenter', cinemas: 'kinos-theater-und-freizeitanlagen', beauty: 'kosmetiksalons-spas-und-barbershops', malls: 'einkaufszentren' },
+  },
+  sk: {
+    p: { basic: 'pravidelne-upratovanie', general: 'dokladne-upratovanie', deep: 'hlbkove-upratovanie', extras: 'doplnkove-sluzby', chem: 'tepovanie-nabytku-a-kobercov', windows: 'umyvanie-okien', moveout: 'upratovanie-nastahovanie-vystahovanie', reno: 'upratovanie-po-rekonstrukcii' },
+    b: { klining: 'upratovanie-pre-firmy', basic: 'pravidelne-upratovanie', general: 'dokladne-upratovanie', deep: 'hlbkove-upratovanie', windows: 'umyvanie-okien', airbnb: 'upratovanie-airbnb-a-kratkodobych-prenajmov', extras: 'doplnkove-sluzby', moveout: 'upratovanie-nastahovanie-vystahovanie', reno: 'upratovanie-po-rekonstrukcii' },
+    o: { hotels: 'hotely-apartmany-a-airbnb', offices: 'kancelarie-a-coworkingy', shops: 'obchody-butiky-a-showroomy', restaurants: 'restauracie-kaviarne-a-bary', kitchens: 'profesionalne-kuchyne', gyms: 'fitness-centra-a-posilnovne', medical: 'zdravotnicke-zariadenia-kliniky-a-zubne-ambulancie', cars: 'autosalony-a-servisy', bizcenters: 'biznis-centra', cinemas: 'kina-divadla-a-zabavne-centra', beauty: 'salony-krasy-spa-a-barbershopy', malls: 'obchodne-centra' },
+  },
+};
+const CITY_SLUG = { de: { vienna: 'wien', munich: 'muenchen' } };
 
 const TYPES = {
   basic:   { name: 'Базове',        full: 'Базове прибирання' },
@@ -527,7 +554,7 @@ const TIER_PAGE = {
     faq: [
       ['Що входить у базове прибирання?', '{n} за чек-листом. У кімнатах витираємо пил, пилососимо й миємо підлогу, протираємо дзеркала. На кухні миємо посуд і мийку, стільницю, фасади й техніку ззовні, виносимо сміття. У ванній і туалеті чистимо сантехніку, крани, дзеркала та миємо підлогу.'],
       ['Що не входить у базове прибирання?', 'У базове прибирання не входять миття вікон, очищення духовки та холодильника всередині й прибирання шаф усередині. У генеральному прибиранні включені вікна зсередини та духовка й холодильник усередині, у глибокому — також вікна з обох боків (ззовні — за безпечного доступу) і шафи всередині. Окремі роботи можна додати в калькуляторі.'],
-      ['Скільки коштує базове прибирання?', 'У {loc} — {from}. Ціна залежить від площі квартири й фіксується до прибирання, без доплат після. Вкажіть площу в калькуляторі — він одразу покаже точну суму.'],
+      ['Скільки коштує базове прибирання?', '{In} — {from}. Ціна залежить від площі квартири й фіксується до прибирання, без доплат після. Вкажіть площу в калькуляторі — він одразу покаже точну суму.'],
       ['Скільки клінерів приїде і скільки часу це займе?', 'Залежить від площі: {crew} клінерів і {time} год роботи. Калькулятор одразу покаже склад команди й тривалість для вашої квартири.'],
       ['Чи можна замовити базове прибирання регулярно?', 'Так. Увімкніть у калькуляторі «Зробити регулярним» і оберіть графік: щотижня −7%, раз на 2 тижні −5%, раз на місяць −3% на кожне прибирання. Для регулярних клієнтів закріплюємо ту саму команду.'],
       PAY_QA,
@@ -549,7 +576,7 @@ const TIER_PAGE = {
       ['Що входить у генеральне прибирання?', 'Усе з базового пакета й додаткові роботи: вікна зсередини, духовка та холодильник усередині, балкон або тераса, накопичений бруд і важкодоступні місця. Разом {n} за чек-листом.'],
       ['Чим генеральне прибирання відрізняється від базового та глибокого?', 'Базове — для регулярного підтримання чистоти. Генеральне — для ретельного очищення основних зон: додаються вікна зсередини, духовка та холодильник усередині. Глибоке — коли потрібно очистити також внутрішні поверхні шаф і техніки, складні забруднення та важкодоступні місця; вікна там миємо з обох боків.'],
       ['Чи входить миття вікон?', 'Так: у генеральне прибирання входить миття вікон з внутрішнього боку — внутрішня поверхня скла та доступні елементи вікна. Миття ззовні є в глибокому прибиранні або додається окремо в калькуляторі.'],
-      ['Скільки коштує генеральне прибирання?', 'У {loc} — {from}. Ціна залежить від площі квартири й фіксується до прибирання. Точну суму одразу покаже калькулятор.'],
+      ['Скільки коштує генеральне прибирання?', '{In} — {from}. Ціна залежить від площі квартири й фіксується до прибирання. Точну суму одразу покаже калькулятор.'],
       ['Скільки часу займає генеральне прибирання?', 'Залежно від площі — {time} год, працює команда {crew} клінерів. Калькулятор покаже тривалість і склад команди для вашої квартири.'],
       ['Що означає 1 година прасування у подарунок?', 'Один клінер прасує ваші речі до 60 хвилин — це вже входить у ціну генерального прибирання. Якщо речей більше, додаткові години прасування можна додати в калькуляторі.'],
       PAY_QA,
@@ -581,7 +608,7 @@ const TIER_PAGE = {
       ['Чи миєте вікна ззовні?', 'Так, у глибоке прибирання входять вікна з обох боків — за умови безпечного доступу до зовнішньої сторони. Для вікон вище 3 метрів потрібне спецобладнання — менеджер уточнить це заздалегідь.'],
       ['Чи вдасться вивести будь-яке складне забруднення?', 'Ретельно очищуємо жир, вапняний наліт та інші стійкі забруднення засобами, безпечними для відповідних поверхонь. Результат залежить від стану матеріалів і характеру забруднення: наприклад, старі плями на натуральному камені чи пошкоджене покриття не завжди вдається вивести без шкоди для поверхні.'],
       ['Що означає 1 година хімчистки у подарунок?', 'Це до 60 хвилин роботи з хімчистки мʼяких меблів, а не чистка будь-якого дивана чи комплекту повністю. За цей час можна почистити, наприклад, диван до 2 метрів або два крісла. Оберіть меблі в калькуляторі — він сам відніме вартість того, що вкладається в годину. Другий подарунок — 1 година прасування: один клінер прасує ваші речі до 60 хвилин.'],
-      ['Скільки коштує і скільки триває глибоке прибирання?', 'У {loc} — {from}; ціна залежить від площі й фіксується до прибирання. Зазвичай це {time} год роботи команди {crew} клінерів — калькулятор покаже точно.'],
+      ['Скільки коштує і скільки триває глибоке прибирання?', '{In} — {from}; ціна залежить від площі й фіксується до прибирання. Зазвичай це {time} год роботи команди {crew} клінерів — калькулятор покаже точно.'],
       PAY_QA,
     ],
   },
@@ -612,7 +639,7 @@ const SOLO_PAGE = {
       ['Чи входить миття вікон?', 'Так, зсередини. Миття ззовні додається окремо в калькуляторі — за умови безпечного доступу до зовнішньої сторони.'],
       ['Як підготувати квартиру до прибирання?', 'Для повного прибирання при виїзді квартира має бути звільнена від особистих речей, а вода та електрика — доступні. Холодильник звільніть від продуктів; якщо треба помити морозилку — розморозьте її заздалегідь. Мебльовані квартири теж прибираємо.'],
       ['За скільки часу до виїзду замовляти прибирання?', 'Найкраще — за 2–3 дні до передачі квартири орендодавцю: залишиться час, якщо щось треба буде доробити. Якщо часу мало, скажіть менеджеру про терміни — прибираємо щодня, включно з вихідними.'],
-      ['Скільки коштує і скільки триває прибирання?', 'У {loc} — {from}; ціна залежить від площі й фіксується до прибирання. Зазвичай це {time} год роботи команди {crew} клінерів — калькулятор покаже точно.'],
+      ['Скільки коштує і скільки триває прибирання?', '{In} — {from}; ціна залежить від площі й фіксується до прибирання. Зазвичай це {time} год роботи команди {crew} клінерів — калькулятор покаже точно.'],
     ],
   },
   reno: {
