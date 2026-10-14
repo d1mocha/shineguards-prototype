@@ -25,10 +25,11 @@ OG_IMAGE = 'https://res.cloudinary.com/dbiy7qyfe/image/upload/w_1200,h_630,c_fil
 
 CITIES = {
     #            name         locative      "from" prices (basic, general, deep)  min order
-    'vienna':     ('Відень',     'Відні',      (120, 170, 260), 108),
-    'graz':       ('Грац',       'Граці',      (100, 140, 205), 108),
-    'munich':     ('Мюнхен',     'Мюнхені',    (120, 170, 260), 108),
-    'bratislava': ('Братислава', 'Братиславі', (65, 75, 90), 70),
+    # general and deep include the extra cleaner-hours (PKG_EXTRA_HOURS in data.js): +32,50 € / +65 €, SK +18 € / +36 €
+    'vienna':     ('Відень',     'Відні',      (120, 203, 325), 108),
+    'graz':       ('Грац',       'Граці',      (100, 173, 270), 108),
+    'munich':     ('Мюнхен',     'Мюнхені',    (120, 203, 325), 108),
+    'bratislava': ('Братислава', 'Братиславі', (65, 93, 126), 70),
 }
 EXTRA_HOUR = {'vienna': 32.5, 'graz': 32.5, 'munich': 32.5, 'bratislava': 18}
 RENO_HOUR = {'vienna': 36, 'graz': 36, 'munich': 36, 'bratislava': 21.5}

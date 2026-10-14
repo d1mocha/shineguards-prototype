@@ -942,7 +942,7 @@ function privOutB() {
   if (c.minApplied && !meter) sub.push(`мінімум ${eur(r.minVisit)}`);
   let h = `<div class="price-box"><div class="p-label">${reg ? 'Кожне прибирання' : wel ? 'Ціна першого замовлення' : state.type === 'windows' ? `Миття вікон · ${state.win.sides === 2 ? 'з обох боків' : 'лише зсередини'}` : meter ? 'До сплати — мінімальне замовлення' : state.type === 'chem' ? 'Ціна хімчистки' : 'Ціна прибирання'}</div>
     <div class="p-row"><div class="p-value num">${cut ? was : ''}<span id="pNum" data-v="${cut || c.range ? '' : c.total}">${main}</span>${cut ? '' : was}</div><div class="p-meta">${meta}</div></div>
-    <div class="p-sub">${sub.join(' · ')}</div>${PKG_GIFTS[state.type] ? giftsRow(state.type, 'p-gifts') : ''}${c.range && state.type === 'windows' ? winBreakdownHTML(r.windowHour, r.minVisit) : ''}${meter ? minMeterHTML(c, false) : ''}`;
+    <div class="p-sub">${sub.join(' · ')}</div>${isPackage() ? '<p class="p-fine">Ціна залежить від пакета, площі та додаткових послуг. Усі додаткові роботи погоджуємо з вами до виконання.</p>' : ''}${PKG_GIFTS[state.type] ? giftsRow(state.type, 'p-gifts') : ''}${c.range && state.type === 'windows' ? winBreakdownHTML(r.windowHour, r.minVisit) : ''}${meter ? minMeterHTML(c, false) : ''}`;
   if (INC_PILLS[state.type]) {
     const nTasks = pkgTasks(state.type); // the same number as in the package cards: gifts are not tasks
     const inc = incHref();
@@ -1027,15 +1027,19 @@ function bizSoloOut(c) {
     <div class="incrow"><div class="head"><b>Як це працює</b></div><div class="pills">${cfg.quotePills.map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div></div></div>${foot('Отримати пропозицію')}`;
   if (c.request) return bizOut();
   const nb = (x) => x.replace(/ (€|\/)/g, '&nbsp;$1'); // «52 €» and «€ / год» never break across lines
-  const sub = [c.oneOff ? '' : nb(`від ${dec(BIZ.rate)} € netto / год`) + ' при регулярному обслуговуванні', c.minApplied ? `мінімальна вартість візиту&nbsp;— ${nb(eur(c.min))}` : '', c.volume ? 'для такого обсягу підготуємо індивідуальну ставку' : ''].filter(Boolean);
-  // a general cleaning or heavy grease: the sum must not read as an offer — photos or a visit come first
-  const note = c.photo ? `<div class="approx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span><b>${cfg.photoNote}</b> Розрахунок орієнтовний і не є комерційною пропозицією: кількість клінерів і тривалість робіт розраховуємо ми.</span></div>`
-    : '<p class="p-note">Орієнтовний розрахунок, не є комерційною пропозицією. Кількість клінерів, тривалість візиту й фінальну вартість розраховуємо ми — і фіксуємо в пропозиції.' + (cfg.outNote ? ' ' + cfg.outNote : '') + '</p>';
+  // review, Oct 2026: the block said the monthly sum, the hourly rate, the minimum visit, the «not an offer» warning and
+  // the list of what is included all at once — now the sum and two short lines; the details open on demand
+  const fine = [c.volume ? 'Для такого обсягу підготуємо індивідуальну ставку.' : 'Точну вартість визначимо після уточнення обсягу робіт.', `Мінімальна вартість одного візиту — ${nb(eur(c.min))} netto.`].join(' ');
+  const photo = c.photo ? `<div class="approx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span><b>${cfg.photoNote}</b></span></div>` : '';
+  const more = `<details class="p-more"><summary>Що входить у вартість?</summary>
+      <div class="pills">${['Засоби та інвентар', 'Клінери за чек-листом', 'Контроль якості', 'Договір і документи', 'Персональний менеджер'].map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div>
+      <p>${c.oneOff ? '' : `Ставка — ${nb(`від ${dec(BIZ.rate)} € netto / год`)} при регулярному обслуговуванні. `}Розрахунок орієнтовний і не є комерційною пропозицією: кількість клінерів, тривалість візиту й фінальну вартість розраховуємо ми — і фіксуємо в пропозиції.${cfg.outNote ? ' ' + cfg.outNote : ''}</p></details>`;
   const wa = c.photo ? `<a class="cta-alt" href="${waHref(`Добрий день! Потрібне прибирання професійної кухні (${CITIES[state.city].name}): ${soloAnswers(c).join('; ').toLowerCase()}. Надсилаю фото.`)}" target="_blank" rel="noopener">${SOC.wa}або надіслати фото кухні у WhatsApp</a>` : '';
-  return `<div class="price-box"><div class="p-label">${c.oneOff ? 'Орієнтовно за прибирання' : 'Орієнтовно на місяць'}</div>
-    <div class="p-row"><div class="p-value num rg"><span class="rgv">≈ ${soloRange(c)}</span> <span class="per">netto${c.oneOff ? '' : ' / місяць'}</span></div></div>
-    ${sub.length ? `<div class="p-sub">${sub.join(' · ')}</div>` : ''}${note}
-    <div class="incrow"><div class="head"><b>Уже в ціні</b></div><div class="pills">${['Засоби та інвентар', 'Клінери за чек-листом', 'Договір і документи', 'Персональний менеджер'].map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div></div></div>${foot('Отримати пропозицію', wa)}`;
+  return `<div class="price-box"><div class="p-label">Орієнтовна вартість прибирання</div>
+    <div class="p-row"><div class="p-value num rg"><span class="rgv">≈ ${soloRange(c)}</span> <span class="per">netto${c.oneOff ? '' : ' / міс'}</span></div></div>
+    <div class="p-for">${soloAnswers(c)[0]}</div>${photo}
+    <p class="p-fine">${fine}</p>
+    <div class="p-ok"><i>✓</i>Інвентар, засоби, клінери та контроль якості включені</div>${more}</div>${foot('Отримати пропозицію', wa)}`;
 }
 const liteHref = () => `${objHref(SOLO_ID)}?ba=${state.bs.area}&bf=${soloFreq()}`;
 function setBsArea(v, fromRange) {
@@ -1145,7 +1149,7 @@ function bizOut() {
   if (c.request === 'hotel') return `<div class="price-box"><div class="p-label">Готель — індивідуальна пропозиція</div><div class="p-value" style="font-size:28px">за 24 години</div><div class="p-vat"><span>за кількістю номерів, типом прибирання та графіком</span></div>${pills(['Чек-лист для номерів', 'Заміна білизни', 'Фото-контроль'])}</div>${foot('Отримати пропозицію')}`;
   if (c.request === 'other') return `<div class="price-box"><div class="p-label">Індивідуальна пропозиція</div><div class="p-value" style="font-size:28px">за 24 години</div><div class="p-vat"><span>після опису або огляду обʼєкта</span></div>${pills(['Огляд обʼєкта', 'Розрахунок і документи', 'Участь у тендерах'], 'Як ми працюємо')}</div>${foot('Надіслати запит')}`;
   if (c.request === 'big') return `<div class="notice"><b>Великий обʼєкт · ~${Math.round(c.monthHours)} год на місяць</b>Для обʼєктів від ${BIZ.bigHours} годин на місяць готуємо індивідуальну пропозицію після огляду обʼєкта.</div>${foot('Запросити огляд обʼєкта')}`;
-  if (c.request === 'sk-hourly') return `<div class="notice"><b>Відповімо протягом 30 хвилин</b>Опишіть обʼєкт і графік — менеджер надішле ставку та пропозицію.</div>${foot('Залишити запит')}`;
+  if (c.request === 'sk-hourly') return `<div class="notice"><b>Відповімо протягом 30 хвилин у робочий час</b>Опишіть обʼєкт і графік — менеджер надішле ставку та пропозицію.</div>${foot('Залишити запит')}`;
   if (c.request === 'apt-big') return `<div class="notice"><b>Апартаменти понад 190 м²</b>Розрахуємо індивідуально — залиште запит.</div>${foot('Залишити запит')}`;
   if (c.winEmpty) return `<div class="notice"><b>Вкажіть вікна</b>Порахуємо орієнтовну вартість миття (${dec(sk ? 21.5 : BIZ.windowHour)} € / год, ${nt}).</div>${foot('Залишити запит')}`;
   let label, main, meta = '', flags = [], inc;
@@ -1311,7 +1315,7 @@ function heroHTML(o) {
   </div></section>`;
 }
 const TRUST_P = [
-  ['<path d="M17 6.5A7 7 0 1 0 17 17.5M4 10h9M4 14h9"/>', 'Фіксована ціна без доплат'],
+  ['<path d="M17 6.5A7 7 0 1 0 17 17.5M4 10h9M4 14h9"/>', 'Прозора ціна без прихованих доплат'],
   ['<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>', 'Перевірена команда'],
   ['<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', 'Швидке бронювання'],
   ['<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>', 'Контроль якості, прибирання за чек-листом'],
@@ -1319,7 +1323,7 @@ const TRUST_P = [
 ];
 const TRUST_B = [
   ['<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>', 'Офіційний договір і повний пакет документів'],
-  ['<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>', 'Комерційна пропозиція протягом 24 годин'],
+  ['<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>', 'Комерційна пропозиція протягом 24 годин після опису обʼєкта'],
   ['<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', 'Вихідні та свята за погодженим графіком — без доплат'],
 ];
 // Short service name for cards/footer: the "для бізнесу" suffix is implied there
@@ -1360,7 +1364,8 @@ function servicesSec(title, sub, ids, kind) {
 // Packages side by side. Rooms, kitchen and bathroom are in every package, so they share one tile and the space
 // goes to the four works that tell the packages apart — the difference shows at a glance (aligned tiles, as on
 // apple.com/iphone/compare; icons instead of lists). The full room-by-room checklist opens on demand.
-const PKG_SCN = { basic: 'Для регулярного підтримання чистоти', general: 'Для ретельного прибирання, якщо давно не прибирали', deep: 'Максимальна деталізація, включно з внутрішніми та важкодоступними зонами' };
+// basic and deep — the wording of the review; general stays: hard-to-reach places are the mark of the deep package
+const PKG_SCN = { basic: 'Для підтримання чистоти в квартирі — регулярно або разово', general: 'Для ретельного прибирання, якщо давно не прибирали', deep: 'Максимально детальне прибирання, включно з внутрішніми поверхнями шаф, технікою та складними забрудненнями' };
 const PKG_BASE = { basic: 'пил, підлога, поверхні, сантехніка', general: 'усе з базового й важкодоступні місця', deep: 'усе з генерального, меблі детально, кахель і шви' };
 const PKG_GIFTS = { general: ['1 година прасування'], deep: ['1 година прасування', 'до 1 години хімчистки мʼяких меблів'] };
 const GIFT_NOTE = { general: 'Один клінер прасує ваші речі до 60 хвилин.', deep: 'Подарунки — це час роботи: до 60 хвилин прасування й до 60 хвилин хімчистки, а не чистка будь-якого дивана чи комплекту повністю.' };
@@ -1438,7 +1443,11 @@ function openChecklist(k) {
 }
 function objectsSec() {
   const also = [['windows', 'Миття вікон'], ['reno', 'Прибирання після ремонту'], ['general', 'Генеральне прибирання'], ['deep', 'Глибоке прибирання'], ['moveout', 'Переїзд офісу'], ['extras', 'Додаткові послуги']];
-  return sec('objects', 'Клінінг для різних типів бізнесу', 'Оберіть свій обʼєкт — покажемо, що саме робимо, і порахуємо ціну.', `<div class="objgrid main">${OBJ_MAIN.concat(OBJ_MORE).map(objTile).join('')}</div>
+  // review, Oct 2026: twelve equal cards are too many — six main directions large, the other types right below them
+  // (owner, round 20: nothing behind an expander here, so they are not folded away)
+  const rest = OBJ_MAIN.concat(OBJ_MORE).filter((id) => !OBJ_TOP.includes(id));
+  return sec('objects', 'Клінінг для різних типів бізнесу', 'Оберіть свій обʼєкт — покажемо, що саме робимо, і порахуємо ціну.', `<div class="objgrid main six">${OBJ_TOP.map(objTile).join('')}</div>
+    <p class="obj-more-t">Інші типи обʼєктів</p><div class="obj-links obj-rest">${rest.map((id) => `<a class="obj-link" href="${objHref(id)}">${objIco(id)}<span>${OBJECTS[id].name}</span></a>`).join('')}</div>
     <div class="also"><span>Також виконуємо:</span>${also.map(([id, n]) => `<a href="${svcHref(id, 'business')}">${n}</a>`).join('')}</div>
     <div class="also obj-none"><span>Немає вашого типу обʼєкта?</span><button type="button" class="lnk" data-open="book" data-bizgoal="Комерційна пропозиція">Залиште заявку — розрахуємо індивідуально</button></div>`);
 }
@@ -1491,7 +1500,7 @@ function aboutSec(title, opts = {}) {
   const stats = opts.noStats ? '' : statsHTML(P() ? STATS_PRIVATE : STATS_BIZ);
   const body = opts.noPhoto ? `${stats}<div class="adv-grid wide">${adv}</div>` : `${stats}<div class="team">${teamGalleryHTML()}<div class="adv-grid">${adv}</div></div>`;
   return sec('about', title || (P() ? 'Чому клієнти обирають Shine Guards' : 'Чому бізнес обирає Shine Guards'),
-    opts.sub || (P() ? '' : 'Надійні люди, фіксована ціна й відповідальність сторін — закріплені в договорі.'), body);
+    opts.sub || (P() ? '' : 'Надійні люди, контроль якості й відповідальність сторін — закріплені в договорі.'), body);
 }
 const statsStripSec = (list = P() ? STATS_PRIVATE : STATS_BIZ) => `<section class="block tight" id="numbers"><div class="container reveal">${statsHTML(list)}</div></section>`;
 function moreServicesSec() {
@@ -1949,7 +1958,8 @@ function tierInclSec(k) {
 // a page's own questions; price, crew, timing and minimums come from the city's tables
 function fillFaq(list, key) {
   const c = CITIES[state.city], r = R(), cr = key && c.crew[key], n = TIER_RANK[key] != null ? pkgTasks(key) : 0;
-  const span = (a) => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? dec(lo) : `від ${dec(lo)} до ${dec(hi)}`; };
+  const half = (x) => Math.round(x * 2) / 2; // the hours of a tier are no longer whole: say them to the half hour
+  const span = (a) => { const lo = half(Math.min(...a)), hi = half(Math.max(...a)); return lo === hi ? dec(lo) : `від ${dec(lo)} до ${dec(hi)}`; };
   const vals = { loc: c.loc, min: eur(r.minVisit), rate: `${dec(r.windowHour)} €`, hourly: `${dec(r.hourly)} €`, windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '', from: key ? `від ${eur(cityPrices()[key][0])}` : '', time: cr ? span(cr.h) : '', crew: cr ? span(cr.c) : '' };
   const fill = (x) => x.replace(/\{(\w+)\}/g, (m, k) => vals[k] || m);
   return list.map(([q, a]) => [fill(q), fill(a)]);
@@ -2027,7 +2037,7 @@ function pageService() {
     if (SVC_ID === 'reno') facts.push(['Вартість', 'після оцінки за фото'], ['Оплата', 'за фактичний час']); // the budget matters more than the hourly rate
     else if (SVC_ID === 'chem') facts.push(['Диван', `від ${eur(R().uph['2seater'])}`], ['Мінімальне замовлення', eur(R().minVisit)], ['Висихання', '6–12 годин']);
     else if (sub) facts.push(SVC_ID === 'windows' ? ['Мінімальне замовлення', eur(R().minVisit)] : [SVC_ID === 'extras' ? 'Послуги' : 'Ціна', sub]);
-    if (PRICE_KEY[SVC_ID]) { const cr = c.crew[PRICE_KEY[SVC_ID]]; facts.push(['Тривалість', `${dec(Math.min(...cr.h))}–${dec(Math.max(...cr.h))} год`]); }
+    if (PRICE_KEY[SVC_ID]) { const cr = c.crew[PRICE_KEY[SVC_ID]]; const hh = (x) => dec(Math.round(x * 2) / 2); facts.push(['Тривалість', `${hh(Math.min(...cr.h))}–${hh(Math.max(...cr.h))} год`]); }
     // the third fact is what sets the package apart: the schedule for basic, the size of the checklist for general and deep
     if (tier === 'basic') facts.push(['Регулярно', 'до −7%']);
     else if (tier) facts.push(['Чек-лист', `${pkgTasks(tier)} ${tasksWord(pkgTasks(tier))}`]);
@@ -2044,7 +2054,7 @@ function pageService() {
   const trust = trustFor(kind, SVC_ID);
   if (kind === 'business' && s.trust) trust[2] = [trust[2][0], s.trust];
   const requestOnly = (kind === 'private' && SVC_ID === 'reno') || (kind === 'business' && ['moveout', 'reno'].includes(SVC_ID));
-  const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">у ${c.loc}</span>`, sub: s.sub, lead: s.lead, note: tier && PKG_GIFTS[tier] ? giftsRow(tier, 'hero-gifts pop') : '',
+  const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">у ${c.loc}</span>`, sub: s.sub, lead: s.lead,
     facts, trust, side: requestOnly ? sideRequest() : null });
   const faqTitle = `Питання про «${s.name.charAt(0).toLowerCase() + s.name.slice(1)}»`;
   // business service with its own story (windows, post-renovation):
@@ -2440,6 +2450,12 @@ function summaryLines(c) {
   }
   return `<div class="sumbox">${rows.map(([a, v]) => `<div class="ln"><span>${a}</span><span class="num">${v}</span></div>`).join('')}<div class="ln sm"><span>${CITIES[state.city].name} · ${sk ? 'ми не є платниками ПДВ' : 'netto'} · орієнтовний розрахунок, не є комерційною пропозицією</span></div></div>`;
 }
+// the business calculator's answers as a WhatsApp message to the manager
+function bizWaText(c) {
+  const tmp = document.createElement('div'); tmp.innerHTML = summaryLines(c);
+  const rows = [...tmp.querySelectorAll('.ln:not(.sm)')].map((ln) => [...ln.querySelectorAll('span')].map((x) => x.textContent.trim()).filter(Boolean).join(': ')).filter(Boolean);
+  return `Добрий день! Хочу отримати пропозицію на прибирання (${CITIES[state.city].name}):\n${rows.join('\n')}`;
+}
 function renderModal(done = false) {
   const x = '<button class="x" type="button" data-close aria-label="Закрити">×</button>';
   if (done) {
@@ -2470,20 +2486,24 @@ function renderModal(done = false) {
         <div class="cta-note">Прибираємо 24/7 · ${state.type === 'moveout' ? 'прибирання при переїзді — за передоплатою' : 'оплата після прибирання'}</div>
       </form>`;
   } else {
+    // review, Oct 2026: a short form — name and a phone or an email; what the calculator counted is already in it, and the
+    // same goes to WhatsApp as a ready message
+    const goalSel = `<div class="fld"><label for="fGoal">Мета звернення</label><select id="fGoal">${['Комерційна пропозиція', 'Огляд обʼєкта', 'Тендер — надішлю ТЗ'].map((g) => `<option ${g === bizGoal ? 'selected' : ''}>${g}</option>`).join('')}</select></div>`;
+    const goal = sum ? '' : goalSel;
     $('#modal').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:start;gap:12px"><h3 id="mTitle">${sum ? 'Отримати пропозицію' : 'Запит для бізнесу'}</h3>${x}</div>
       ${sum}
       <form id="bookForm">
-        <div class="fld"><label for="fGoal">Мета звернення</label><select id="fGoal">${['Комерційна пропозиція', 'Огляд обʼєкта', 'Тендер — надішлю ТЗ'].map((g) => `<option ${g === bizGoal ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
-        <div class="fld-2"><div class="fld"><label for="fCo">Компанія</label><input id="fCo" required placeholder="Назва компанії" autocomplete="organization" /></div><div class="fld"><label for="fName">Контактна особа</label><input id="fName" required placeholder="Імʼя" autocomplete="name" /></div></div>
-        <div class="fld"><label for="fPhone">Телефон</label><input id="fPhone" required type="tel" placeholder="+43 …" autocomplete="tel" /></div>
+        ${goal}
+        <div class="fld-2"><div class="fld"><label for="fName">Імʼя</label><input id="fName" required placeholder="Контактна особа" autocomplete="name" /></div><div class="fld"><label for="fPhone">Телефон або email</label><input id="fPhone" required placeholder="+43 … або name@company.com" autocomplete="tel" /></div></div>
         ${PAGE === 'service' && SVC_ID === 'reno' ? '<div class="fld"><label for="fReady">Коли обʼєкт має бути готовий до відкриття / передачі?</label><input id="fReady" type="date" /></div>' : ''}
-        <details class="opt-f"><summary>Email, адреса й опис обʼєкта <span>необовʼязково</span></summary>
-          <div class="fld"><label for="fEmail">Email</label><input id="fEmail" type="email" placeholder="для пропозиції" autocomplete="email" /></div>
+        <details class="opt-f"><summary>Компанія, адреса й коментар <span>необовʼязково</span></summary>
+          ${sum ? goalSel : ''}
+          <div class="fld"><label for="fCo">Компанія</label><input id="fCo" placeholder="Назва компанії" autocomplete="organization" /></div>
           <div class="fld"><label for="fAddr">Адреса обʼєкта</label><input id="fAddr" placeholder="${CITIES[state.city].name}, вулиця, будинок" /></div>
-          <div class="fld"><label for="fMsg">Опишіть обʼєкт</label><textarea id="fMsg" placeholder="Площа, графік, особливі вимоги"></textarea></div>
+          <div class="fld"><label for="fMsg">Коментар</label><textarea id="fMsg" placeholder="${sum ? 'Особливі вимоги, зручний час' : 'Тип і площа обʼєкта, графік, особливі вимоги'}"></textarea></div>
         </details>
-        <button class="cta" type="submit">Надіслати запит</button>
+        <button class="cta" type="submit">Надіслати запит</button>${sum ? `<a class="cta-alt" href="${waHref(bizWaText(c))}" target="_blank" rel="noopener">${SOC.wa}або написати у WhatsApp — з цими даними</a>` : ''}
         <div class="cta-note">Пропозиція протягом 24 годин · договір і документи для бухгалтерії</div>
       </form>`;
   }
