@@ -1892,3 +1892,8 @@ details.p-more p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color:
 .obj-more-t { margin: 22px 0 0; font: 700 15px/1.3 Montserrat, sans-serif; color: var(--ink); }
 .obj-links.obj-rest { margin-top: 10px; }
 @media (max-width: 700px) { .objgrid.main.six { grid-template-columns: repeat(2, 1fr); } }
+
+/* ═════════ Round 30: the review of the deep cleaning page ═════════ */
+/* what a bigger package adds to the smaller one — one line under the works in the calculator */
+.inc-plus { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink2); }
+.inc-plus b { color: var(--ink); }

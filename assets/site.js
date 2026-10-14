@@ -947,7 +947,7 @@ function privOutB() {
     const nTasks = pkgTasks(state.type); // the same number as in the package cards: gifts are not tasks
     const inc = incHref();
     h += `<div class="incrow"><div class="head"><span><b>Що входить</b>${TIER_RANK[state.type] != null ? ` · <span class="cnt">${nTasks} ${tasksWord(nTasks)}</span>` : ''}</span>${inc !== '#' ? `<a href="${inc}" data-inc>Детальніше →</a>` : ''}</div>
-      <div class="pills">${INC_PILLS[state.type].map((x) => `<span class="pill"><i>✓</i>${x}</span>`).join('')}</div></div>`;
+      <div class="pills">${INC_PILLS[state.type].map((x) => `<span class="pill"><i>✓</i>${x}</span>`).join('')}</div>${INC_PLUS[state.type] ? `<p class="inc-plus"><b>${INC_PLUS[state.type][0]}</b> ${INC_PLUS[state.type][1]}</p>` : ''}</div>`;
   }
   if (isRegType()) {
     const d = freqDisc();
@@ -1257,13 +1257,13 @@ function extrasHTML() {
       const flatSum = FLAT.filter((x) => state.flat.has(x.id) && !isIncluded(x.id)).reduce((a, x) => a + x.price, 0);
       h += `<details class="grp" name="drg" data-g="kitchen" ${open('kitchen')}><summary>${ic('oven')}Техніка та балкон ${tag(flatSum, '', 'kitchen')} ${chev}</summary><div class="in">
       ${FLAT.map((x) => { const inc = isIncluded(x.id);
-        return `<div class="row"><div class="nm">${x.name}${inc ? '<span class="badge">у пакеті</span>' : `<small>${eur(x.price)}${alone && x.d ? ' · ' + x.d : ''}</small>`}</div>
+        return `<div class="row"><div class="nm">${x.name}${inc ? '<span class="badge">у пакеті</span>' : `<small>${eur(x.price)}${(alone || x.show) && x.d ? ' · ' + x.d : ''}</small>`}</div>
           <button type="button" class="toggle" data-flat="${x.id}" aria-pressed="${state.flat.has(x.id)}" ${inc ? 'disabled' : ''}>${inc ? '✓ Включено' : state.flat.has(x.id) ? '✓ Додано' : 'Додати'}</button></div>`; }).join('')}</div></details>`;
     }
     // ironing makes no sense for an apartment that is being handed over
     const hourly = HOURLY.filter((x) => !isIncluded(x.id) && !(t === 'moveout' && x.id === 'ironing')), onlyIron = hourly.length === 1;
     const hSum = hourly.reduce((a, x) => a + (state.hours[x.id] || 0) * r.extraHour, 0);
-    if (hourly.length) h += `<details class="grp" name="drg" data-g="hourly" ${open('hourly')}><summary>${ic(onlyIron ? 'iron' : 'hanger')}${onlyIron ? 'Прасування' : 'Шафи, гардероб, прасування'} ${tag(hSum, '', 'hourly')} ${chev}</summary><div class="in">
+    if (hourly.length) h += `<details class="grp" name="drg" data-g="hourly" ${open('hourly')}><summary>${ic(onlyIron ? 'iron' : 'hanger')}${onlyIron ? 'Прасування' : hourly.some((x) => /cabinets/.test(x.id)) ? 'Шафи, гардероб, прасування' : 'Гардероб і прасування'} ${tag(hSum, '', 'hourly')} ${chev}</summary><div class="in">
       ${hourly.map((x) => { const gift = x.id === 'ironing' && (t === 'general' || t === 'deep');
         return `<div class="row"><div class="nm">${x.name}${gift ? '<span class="badge gift">1 година у подарунок</span>' : ''}<small>${dec(r.extraHour)} € / год</small></div>
           ${stepper('h:' + x.id, state.hours[x.id] || 0, 8)}</div>`; }).join('')}</div></details>`;
@@ -1272,7 +1272,7 @@ function extrasHTML() {
   }
   const uphSum = UPH.reduce((a, u) => a + (state.uph[u.id] || 0) * r.uph[u.id], 0);
   h += `<details class="grp" name="drg" data-g="uph" ${open('uph')}><summary>${ic('sofa')}Хімчистка мʼяких меблів ${tag(uphSum, '', 'uph')} ${chev}</summary><div class="in">
-    ${t === 'deep' ? `<p class="note" style="margin-top:0">${GIFT_SVG} До 1 години хімчистки — у подарунок до глибокого прибирання. Це час роботи, а не чистка будь-якого дивана повністю: калькулятор сам відніме вартість того, що вкладається в годину.</p>` : ''}
+    ${t === 'deep' ? `<p class="note" style="margin-top:0">${GIFT_SVG} До 1 години хімчистки — у подарунок до глибокого прибирання. Це час роботи, а не чистка будь-якого дивана повністю: калькулятор сам відніме вартість того, що вкладається в годину (наприклад, диван до 2 м або два крісла), а решту порахує за цінами нижче.</p>` : ''}
     ${UPH.map((u) => `<div class="row"><div class="nm">${u.name}<small>${eur(r.uph[u.id])}</small></div>${stepper('u:' + u.id, state.uph[u.id] || 0, 10)}</div>`).join('')}
     <div class="sub-l">Які тканини чистимо</div>${FABRIC_HTML}</div></details>`;
   const cs = state.carpet;
@@ -2481,7 +2481,7 @@ function renderModal(done = false) {
           <div class="fld-2"><div class="fld"><label for="fDate">${isReg() ? 'Дата першого прибирання' : 'Дата'}</label><input id="fDate" type="date" /></div><div class="fld"><label for="fEmail">Email</label><input id="fEmail" type="email" placeholder="для інвойсу" autocomplete="email" /></div></div>
           <div class="fld"><label>Зручний час початку</label><div class="slots">${['8:00', '9:00', '10:00', '14:00', '15:00', '16:00'].map((s) => `<button type="button" class="chip" data-slot aria-pressed="false">${s}</button>`).join('')}</div></div>
         </details>
-        <p class="form-hint">${!sum ? 'Менеджер передзвонить або напише, щоб узгодити дату й деталі.' : state.type === 'windows' ? 'Менеджер напише вам, ви надішлете фото вікон — і він підтвердить фінальну суму та дату.' : `Це заявка на бронювання: менеджер передзвонить або напише й підтвердить дату та час.${c.welcome ? ' Знижку для нових клієнтів він перевірить під час підтвердження.' : ''}`}</p>
+        <p class="form-hint">${!sum ? 'Менеджер передзвонить або напише, щоб узгодити дату й деталі.' : state.type === 'windows' ? 'Менеджер напише вам, ви надішлете фото вікон — і він підтвердить фінальну суму та дату.' : `Це заявка на бронювання: менеджер передзвонить або напише й підтвердить дату та час.${c.welcome ? ' Знижку для нових клієнтів він перевірить під час підтвердження.' : ''}${state.type === 'deep' ? ' Перед прибиранням звільніть шафи й шухляди від речей — ми миємо їх усередині.' : ''}`}</p>
         <button class="cta" type="submit">${sum ? 'Надіслати заявку' : 'Отримати оцінку вартості'}</button>
         <div class="cta-note">Прибираємо 24/7 · ${state.type === 'moveout' ? 'прибирання при переїзді — за передоплатою' : 'оплата після прибирання'}</div>
       </form>`;
