@@ -1897,3 +1897,12 @@ details.p-more p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color:
 /* what a bigger package adds to the smaller one — one line under the works in the calculator */
 .inc-plus { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink2); }
 .inc-plus b { color: var(--ink); }
+
+/* Round 32: move-in/out — the line of the chosen situation under the choice */
+.mv-hint { margin: 8px 2px 2px; }
+/* upholstery: the order without a minimum next to a flat cleaning is said where the prices are */
+.xs-min.combo { margin: 0 0 16px; font-size: 14px; }
+.xs-min .lnk, .p-fine .lnk { font-size: inherit; font-weight: 700; }
+/* renovation: what to send for the estimate, folded under the buttons of the side card */
+.side-how { margin-top: 12px; }
+.side-how .how-b p { margin: 0; color: var(--ink2); line-height: 1.45; }
