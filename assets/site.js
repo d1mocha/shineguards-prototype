@@ -428,6 +428,10 @@ function computePriv() {
   }
   out.picked = sum; // what the chosen services cost before the minimum order
   if (!isPackage() && sum > 0 && sum < r.minVisit) { out.minApplied = true; sum = r.minVisit; }
+  // a discount never takes a cleaning below the city's lowest price (owner, 2026-10-15): 108 € in Vienna and Munich, the
+  // smallest basic cleaning in Graz (100 €) and Bratislava (65 €)
+  const floor = Math.min(r.minVisit, cityPrices().basic[0]);
+  if (isPackage() && sum > 0 && sum < floor) { out.minFloor = floor; sum = floor; }
   out.exact = sum;
   out.total = Math.round(sum);
   out.listTotal = Math.round(out.listTotal);
@@ -1026,11 +1030,12 @@ function privOutB() {
   if (c.apt) return aptOutHTML(c, true) + foot(`${tl(`Замовити за`)} ${eur2(c.total)}`);
   const reg = isReg(), wel = !!c.welcome, cut = reg || wel, range = c.range && Math.round(c.range[0]) !== Math.round(c.range[1]);
   const main = cut ? `${c.approx ? '≈ ' : ''}${eur2(c.exact)}` : range ? rangeTxt(c.range) : `${c.approx || c.range ? '≈ ' : ''}${eur(c.total)}`;
-  const was = cut ? `<span class="p-was num">${eur(reg ? c.preReg : c.preWelcome)}</span>` : c.gifts.length && c.listTotal > c.total ? `<span class="p-old num">${eur(c.listTotal)}</span>` : '';
+  const was = cut && Math.round(reg ? c.preReg : c.preWelcome) > Math.round(c.exact) ? `<span class="p-was num">${eur(reg ? c.preReg : c.preWelcome)}</span>` : cut ? '' : c.gifts.length && c.listTotal > c.total ? `<span class="p-old num">${eur(c.listTotal)}</span>` : '';
   const meta = c.cleaners ? `<b>${c.cleaners}</b> ${pl(c.cleaners, 'клінер|клінери|клінерів')} · ~<b>${crewTime(c.hours)}</b>` : c.win ? `${tl(`до`)} <b>${dur(c.win.upTo)}</b>` : '';
   const sub = [`${c.approx || c.range ? tl('Орієнтовна ціна') : tl('Фіксована ціна')}${ct === 'sk' ? '' : tl(' з ПДВ')}`, pay];
   const meter = c.minApplied && state.type === 'chem';
   if (c.minApplied && !meter) sub.push(`${tl(`мінімум`)} ${eur(r.minVisit)}`);
+  if (c.minFloor) sub.push(`${tl(`мінімум`)} ${eur(c.minFloor)}`);
   let h = `<div class="price-box"><div class="p-label">${reg ? tl('Кожне прибирання') : wel ? tl('Ціна першого замовлення') : state.type === 'windows' ? `${tl(`Миття вікон ·`)} ${state.win.sides === 2 ? tl('з обох боків') : tl('лише зсередини')}` : meter ? tl('До сплати — мінімальне замовлення') : state.type === 'chem' ? tl('Ціна хімчистки') : tl('Ціна прибирання')}</div>
     <div class="p-row"><div class="p-value num">${cut ? was : ''}<span id="pNum" data-v="${cut || c.range ? '' : c.total}">${main}</span>${cut ? '' : was}</div><div class="p-meta">${meta}</div></div>
     <div class="p-sub">${sub.join(' · ')}</div>${state.type === 'moveout' ? tl('<p class="p-fine">Вартість залежить від площі квартири та обраних додаткових послуг. Нестандартні роботи погоджуємо окремо до початку прибирання.</p>') : isPackage() ? tl('<p class="p-fine">Ціна залежить від пакета, площі та додаткових послуг. Усі додаткові роботи погоджуємо з вами до виконання.</p>') : ''}${state.type === 'windows' && winPhotoCount() ? `<p class="p-fine">${tl('+ інший тип вікна ({0} шт) — ціну підтвердимо за фото.', winPhotoCount())}</p>` : ''}${state.type === 'windows' && c.minApplied ? `<p class="p-fine">${tl('Замовляєте прибирання квартири? Додайте вікна до нього — мінімальна сума тоді не діє.')} <button type="button" class="lnk" data-addto="basic:win">${tl('Додати до прибирання →')}</button></p>` : ''}${PKG_GIFTS[state.type] ? giftsRow(state.type, 'p-gifts') : ''}${c.range && state.type === 'windows' ? winBreakdownHTML(r.windowHour, r.minVisit) : ''}${meter ? minMeterHTML(c, false) : ''}${state.type === 'chem' ? `<div class="xs-lines">${c.lines.map((l) => `<div class="ln"><span>${l.name}</span><span class="num">${eur2(l.price)}</span></div>`).join('')}</div>` : ''}`;
@@ -1042,7 +1047,7 @@ function privOutB() {
   }
   if (isRegType()) {
     const d = freqDisc();
-    h += `<button type="button" class="reg" data-ui="reg" role="switch" aria-checked="${reg}"><span class="switch"><span class="knob"></span></span><span class="reg-t"><b>${tl(`Зробити регулярним`)}</b><small class="${d ? 'ok' : ''}">${d ? `${tl(`−{0}% · економія {1} щоразу`, Math.round(d * 100), eur2(c.preReg - c.exact))}` : `${tl(`заощаджуйте до 7% · {0} щоразу`, eur2(c.exact * Math.max(...FREQ.map((x) => x.disc))))}`}</small></span></button>`;
+    h += `<button type="button" class="reg" data-ui="reg" role="switch" aria-checked="${reg}"><span class="switch"><span class="knob"></span></span><span class="reg-t"><b>${tl(`Зробити регулярним`)}</b><small class="${d ? 'ok' : ''}">${d && c.minFloor ? `${tl(`−{0}% · але не менше мінімальної ціни {1}`, Math.round(d * 100), eur(c.minFloor))}` : d ? `${tl(`−{0}% · економія {1} щоразу`, Math.round(d * 100), eur2(c.preReg - c.exact))}` : `${tl(`заощаджуйте до 7% · {0} щоразу`, eur2(c.exact * Math.max(...FREQ.map((x) => x.disc))))}`}</small></span></button>`;
     if (reg) {
       h += `<div class="freqs reg-opts">${FREQ.filter((x) => x.disc).map((x) => `<button type="button" class="chip" data-freq="${x.id}" aria-pressed="${state.freq === x.id}">${x.label} <span class="save">−${Math.round(x.disc * 100)}%</span></button>`).join('')}</div>`;
       const n = state.freq === 'weekly' ? '≈ 4' : state.freq === 'biweekly' ? '≈ 2' : '1';
@@ -2089,7 +2094,7 @@ function finalBizSec([t, x]) {
 function renoInclSec() {
   const sp = SOLO_PAGE.reno;
   return sec('incl', tl('Що входить у прибирання після ремонту'), '', `<div class="principles when c3">${sp.incl.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>
-    <div class="tz-foot reveal"><p class="tz-note">${sp.hourNote}</p><p class="tz-note">${sp.note}</p><a class="btn-ghost" href="${svcHref('reno', 'business')}">${tl(`Прибирання після ремонту для бізнесу →`)}</a></div>`);
+    <div class="tz-foot reveal"><p class="tz-note">${fillFaq([[sp.hourNote, '']])[0][0]}</p><p class="tz-note">${sp.note}</p><a class="btn-ghost" href="${svcHref('reno', 'business')}">${tl(`Прибирання після ремонту для бізнесу →`)}</a></div>`);
 }
 /* Move-in / move-out: one service and one price, two situations */
 function movesSec() {
@@ -2138,7 +2143,7 @@ function pageService() {
   let facts = [];
   if (kind === 'private') {
     const sub = svcSubline('private', SVC_ID);
-    if (SVC_ID === 'reno') facts.push([tl('Вартість'), tl('після оцінки за фото')], [tl('Оплата'), tl('за фактичний час')]); // the budget matters more than the hourly rate
+    if (SVC_ID === 'reno') facts.push([tl('Вартість'), tl('за фото')], [tl('Оплата'), tl('за фактичний час')], [tl('Мінімум'), eur(R().minVisit)]); // the budget matters more than the hourly rate
     else if (SVC_ID === 'chem') facts.push([tl('Диван'), `${tl(`від`)} ${eur(R().uph['2seater'])}`], [tl('Мінімальне замовлення'), eur(R().minVisit)], [tl('Висихання'), tl('≈ 6–12 годин')]);
     else if (sub) facts.push(SVC_ID === 'windows' ? [tl('Мінімальне замовлення'), eur(R().minVisit)] : [SVC_ID === 'extras' ? tl('Послуги') : tl('Ціна'), sub]);
     if (PRICE_KEY[SVC_ID]) { const hs = (SVC_ID === 'moveout' ? ['general', 'deep'] : [PRICE_KEY[SVC_ID]]).flatMap((k) => c.crew[k].h); const hh = (x) => dec(Math.round(x * 2) / 2); facts.push([tl('Тривалість'), `${hh(Math.min(...hs))}${tl(`–{0} год`, hh(Math.max(...hs)))}`]); }
@@ -2521,7 +2526,7 @@ function summaryLines(c) {
     const plan = c.plan ? `<div class="ln"><span>${FREQ.find((x) => x.id === state.freq).label}${c.plan.up ? ` ${tl(`· раз на місяць —`)} ${lc(TYPES[c.plan.up].name)}` : ''}</span><span class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</span></div>` : '';
     return `<div class="sumbox">${c.lines.map((l) => `<div class="ln"><span>${l.name}</span><span class="num">${eur2(l.price)}</span></div>`).join('')}
       ${c.gifts.map((l) => `<div class="ln g"><span>${l.name}</span><span class="num">−${eur(-l.price)}</span></div>`).join('')}
-      ${c.minApplied ? `<div class="ln"><span>${tl(`Мінімальне замовлення`)}</span><span class="num">${eur(R().minVisit)}</span></div>` : ''}
+      ${c.minApplied ? `<div class="ln"><span>${tl(`Мінімальне замовлення`)}</span><span class="num">${eur(R().minVisit)}</span></div>` : c.minFloor ? `<div class="ln"><span>${tl(`Мінімальна ціна`)}</span><span class="num">${eur(c.minFloor)}</span></div>` : ''}
       <div class="ln tot"><span>${c.plan ? tl('За одне прибирання') : tl('Разом')} · ${CITIES[state.city].name}</span><span class="num">${c.range ? rangeTxt(c.range) : (c.approx ? '≈ ' : '') + (state.type === 'extras' ? eur2(c.exact) : eur(c.total))}</span></div>${plan}
       <div class="ln sm"><span>${CTRY[country()].incl}${c.approx || c.range ? tl(' · вікна — орієнтовно') : ''}${state.type === 'moveout' ? tl(' · передоплата') : tl(' · оплата після прибирання')}</span></div>${winAccessLine()}</div>`;
   }
