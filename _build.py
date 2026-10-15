@@ -127,12 +127,13 @@ BUSINESS_SEO = {
              'Прибирання після ремонту офісів, магазинів, ресторанів і фітнес-центрів {in_city}: будівельний пил, скло, санвузли — до дати відкриття. Оцінка за фото або огляд, пропозиція за 24 години.'),
 }
 NET = ('ціни без ПДВ', 'прозорі ставки')  # business prices: Austria and Germany are netto, Slovakia has no VAT note
+BIZRATE = ('розрахунок онлайн від 27 € за годину', 'ставка за запитом')  # Bratislava has no online hourly price
 HOME_SEO = ('Клінінгова компанія {name}',
             'Професійне прибирання квартир і будинків {in_city} від {fb} €: фіксована ціна за площею, розрахунок онлайн за 30 секунд, оплата після прибирання, рейтинг 4,9 у Google.')
 LIST_SEO = ('Прибирання для дому {name}',
             'Усі послуги прибирання для дому {in_city}: базове, генеральне, глибоке, після ремонту, при переїзді, миття вікон і хімчистка меблів. Ціни від {fb} €.')
 BIZ_HOME_SEO = ('Прибирання для бізнесу {name}',
-                'Клінінг офісів, ресторанів, спортзалів і апартаментів {in_city}: розрахунок онлайн від 27 € за годину, договір, персональний менеджер і документи для бухгалтерії.')
+                'Клінінг офісів, ресторанів, спортзалів і апартаментів {in_city}: {bizrate}, договір, персональний менеджер і документи для бухгалтерії.')
 GLOBAL = {
     'about': ('Про Shine Guards',
               'Shine Guards — клінінгова компанія у Відні, Граці, Мюнхені та Братиславі: власна команда клінерів, чек-листи, страхування відповідальності та рейтинг 4,9 у Google.'),
@@ -152,7 +153,7 @@ def seo_keys():
         out += list(t)
     for _, title, desc in OBJECTS.values():
         out += [title, desc]
-    return out + list(NET)
+    return out + list(NET) + list(BIZRATE)
 
 
 def load_i18n():
@@ -210,7 +211,8 @@ def num(lang, n):
 def vals(city, lang):
     name, loc, (fb, fg, fd), minimum = CITIES[city]
     return {'name': tr(lang, name), 'in_city': tr(lang, 'у ' + loc), 'fb': fb, 'fg': fg, 'fd': fd, 'min': minimum,
-            'reno': num(lang, RENO_HOUR[city]), 'net': tr(lang, NET[1] if city == 'bratislava' else NET[0])}
+            'reno': num(lang, RENO_HOUR[city]), 'net': tr(lang, NET[1] if city == 'bratislava' else NET[0]),
+            'bizrate': tr(lang, BIZRATE[1] if city == 'bratislava' else BIZRATE[0])}
 
 
 def seo(pair, lang, v=None):

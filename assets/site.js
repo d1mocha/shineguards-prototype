@@ -339,12 +339,12 @@ function aptCalc(withVat) {
 }
 // Carpets: the flat price of a small one equals about 8 m² at the price by the m² (130 € ≈ 8 × 16 €), so «small» is
 // up to that size; a bigger carpet is counted by its area and never costs less than the small one
-// one price per m² for any carpet (owner, 2026-10-15); small rugs up to rugMax m² go per piece at the same rate
+// carpets (owner, 2026-10-15): up to rugMax m² a fixed price per piece; bigger — one rate per m², never below that price
 const carpetSmall = (r = R()) => r.rugMax;
 const carpetRate = (m2, r = R()) => r.carpet;
-const carpetPrice = (m2, r = R()) => (m2 ? m2 * r.carpet : 0);
-const carpetLbl = (m2, r = R()) => (!m2 ? tl('не потрібно') : `${m2} ${tl(`м² ·`)} ${eur(carpetPrice(m2, r))}`);
-const carpetTiers = (r = R()) => `${tl(`{0} за м² — однакова ставка для килима будь-якого розміру`, money(r.carpet))}`;
+const carpetPrice = (m2, r = R()) => (m2 ? Math.max(r.rug, m2 * r.carpet) : 0);
+const carpetLbl = (m2, r = R()) => (!m2 ? tl('не потрібно') : m2 <= carpetSmall(r) ? `${tl(`до {0} м² ·`, carpetSmall(r))} ${eur(r.rug)}` : `${m2} ${tl(`м² ·`)} ${eur(carpetPrice(m2, r))}`);
+const carpetTiers = (r = R()) => `${tl(`до {0} м² — {1} за килим · більший — {2} за м²`, carpetSmall(r), eur(r.rug), money(r.carpet))}`;
 const aptWord = (n) => pl(n, 'апартамент|апартаменти|апартаментів');
 function computePriv() {
   const city = CITIES[state.city], r = R();
@@ -402,7 +402,7 @@ function computePriv() {
     }
     if (state.carpet) {
       const s = state.carpet, price = carpetPrice(s, r);
-      out.lines.push({ name: `${tl(`Килим {0} м² × {1} €/м²`, s, carpetRate(s, r))}`, price }); out.extrasCount++;
+      out.lines.push({ name: s <= carpetSmall(r) ? `${tl(`Килим до {0} м²`, carpetSmall(r))}` : s * r.carpet < r.rug ? `${tl(`Килим {0} м²`, s)}` : `${tl(`Килим {0} м² × {1} €/м²`, s, carpetRate(s, r))}`, price }); out.extrasCount++;
       if (s <= 10) chemUnits.push({ min: 60, p: price });
     }
     for (const m of MATTRESS) {
@@ -443,6 +443,8 @@ function computePriv() {
 }
 
 /* ═════════ BUSINESS CALCULATION ═════════ */
+// the minimum of one visit by visits a week (one-off: 0) — BIZ.minByWeek, the most visits first
+const bizMin = (perWeek) => { for (const [n, m] of BIZ.minByWeek) if (perWeek >= n) return m; return BIZ.minOneOff; };
 function computeBiz() {
   if (bizSolo()) return computeBizSolo(bizSolo());
   const b = state.biz, ctry = country(), vat = CTRY[ctry].vat, sk = ctry === 'sk';
@@ -467,7 +469,7 @@ function computeBiz() {
   // a big monthly volume gets an individual rate from the manager — no automatic public discount
   const volume = !oneOff && monthHours >= BIZ.volumeHours;
   const rate = Math.max(BIZ.floor, BIZ.rate * (1 + sur));
-  const min = perWeek >= 3 ? BIZ.minRegular : BIZ.minOneOff;
+  const min = bizMin(perWeek);
   const visitRaw = rate * hoursVisit, visit = Math.max(min, visitRaw);
   const win = b.winHours * BIZ.windowHour;
   const perVisit = visit + win;
@@ -501,7 +503,7 @@ function computeBizSolo(id) {
   const monthHours = oneOff ? hours : hours * perWeek * BIZ.weeks;
   if (oneOff ? hours > 60 : monthHours >= BIZ.bigHours) return { ...base, request: 'big' };
   const rate = Math.max(BIZ.floor, BIZ.rate * (1 + Math.min(BIZ.maxSur, cfg.haccp && b.haccp ? .1 : 0)));
-  const min = !oneOff && perWeek >= 3 ? BIZ.minRegular : BIZ.minOneOff, raw = rate * hours, k = oneOff ? 1 : perWeek * BIZ.weeks;
+  const min = bizMin(oneOff ? 0 : perWeek), raw = rate * hours, k = oneOff ? 1 : perWeek * BIZ.weeks;
   const range = BIZ_SOLO_RANGE.map((f) => Math.round(Math.max(min, raw * f) * k / 10) * 10);
   return { ...base, oneOff, perWeek, rate, hours, monthHours, min, minApplied: raw * BIZ_SOLO_RANGE[1] <= min, volume: !oneOff && monthHours >= BIZ.volumeHours, photo: !!(kt && kt.photo), range, main: range[0] };
 }
@@ -1196,7 +1198,7 @@ function bizOutB() {
   const v = Math.round(c.oneOff ? c.perVisit : c.month);
   return `<div class="price-box"><div class="p-label">${c.oneOff ? tl('Орієнтовно за прибирання') : tl('Орієнтовно на місяць')}</div>
     <div class="p-row"><div class="p-value num">≈ <span id="pNum" data-v="${v}">${eur(v)}</span><span class="per">${net} / ${c.oneOff ? tl('прибирання') : tl('місяць')}</span></div></div>
-    ${c.volume ? tl('<div class="p-sub">Для такого обсягу підготуємо індивідуальну ставку</div>') : ''}${c.minApplied ? `<div class="p-sub">${tl(`Мінімальна вартість візиту —`)} ${eur(c.perWeek >= 3 ? BIZ.minRegular : BIZ.minOneOff)}</div>` : ''}${note}
+    ${c.volume ? tl('<div class="p-sub">Для такого обсягу підготуємо індивідуальну ставку</div>') : ''}${c.minApplied ? `<div class="p-sub">${tl(`Мінімальна вартість візиту —`)} ${eur(bizMin(c.perWeek || 0))}</div>` : ''}${note}
     <div class="incrow"><div class="head"><b>${tl(`Уже в ціні`)}</b></div><div class="pills">${[tl('Засоби та інвентар'), tl('Клінери за чек-листом'), tl('Договір і документи'), tl('Персональний менеджер')].map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div></div></div>${foot(tl('Отримати пропозицію'))}`;
 }
 const useB = () => CALC_B || !!bizSolo() || (P() && state.type === 'extras');
@@ -1263,7 +1265,7 @@ function bizOut() {
     meta = c.oneOff ? `${dec(c.rate)} ${tl(`€ / год`)}<br /><b>${dec(c.hoursVisit)}</b> ${tl(`год роботи`)}` : `<b>${eur2(c.perVisit)}</b> ${tl(`за візит`)}<br />${dec(c.rate)} ${tl(`€ / год · {0} год/міс`, Math.round(c.monthHours))}`;
     if (!sk) flags.push(withVat(c.main));
     if (c.volume) flags.push(tl('<span class="ok">−5% за обсяг від 100 год/міс</span>'));
-    if (c.minApplied) flags.push(`<span class="warn">${tl(`мінімальна вартість візиту`)} ${eur(c.perWeek >= 3 ? BIZ.minRegular : BIZ.minOneOff)}</span>`);
+    if (c.minApplied) flags.push(`<span class="warn">${tl(`мінімальна вартість візиту`)} ${eur(bizMin(c.perWeek || 0))}</span>`);
     inc = [b.ownChem ? null : tl('Засоби та інвентар'), tl('Клінери за чек-листом'), tl('Договір і документи'), tl('Персональний менеджер')].filter(Boolean);
   }
   return `<div class="price-box"><div class="p-label">${label}</div>
@@ -1673,7 +1675,9 @@ function inclSec(s) {
   } else if (s.incl === 'prices') {
     body = pricesHTML();
   } else if (s.incl === 'bizPrices') {
-    body = `<div class="prices"><div class="pcard"><h3>${ic('receipt')}${tl(`Ставки без ПДВ`)}</h3>${BIZ_PRICES.map(([n, p]) => `<div class="pline"><span>${n}</span><b>${p}</b></div>`).join('')}</div>${inclGroups(INCL.bizRegular.slice(0, 1))}</div>`;
+    const sk = country() === 'sk', rates = BIZ_RATES[sk ? 'sk' : 'at'];
+    const val = (k, unit) => (!k ? tl('за оглядом') : rates[k] == null ? tl('за запитом') : `${k === 'rate' ? `${tl(`від`)} ` : ''}${money(dec(rates[k]))} ${tl(unit)}`);
+    body = `<div class="prices"><div class="pcard"><h3>${ic('receipt')}${sk ? tl('Ставки') : tl('Ставки без ПДВ')}</h3>${BIZ_PRICES.map(([n, k, unit]) => `<div class="pline"><span>${n}</span><b>${val(k, unit)}</b></div>`).join('')}${sk ? `<p class="pc-note">${tl('У Словаччині ми не є платниками ПДВ.')}</p>` : ''}</div>${inclGroups(INCL.bizRegular.slice(0, 1))}</div>`;
   } else {
     body = inclGroups(INCL[s.incl] || []);
   }
@@ -1699,7 +1703,7 @@ function pricesHTML() {
       + `<p class="pc-note">${SOLO_PAGE.extras.hourly}</p><p class="pc-note">${tl(`Мінімальне замовлення — {0}: це близько {1} год {2} хв роботи.`, eur(r.minVisit), Math.floor(minMin / 60), minMin % 60)}</p>`) : ''}
     ${card('chem', 'sofa', tl('Хімчистка мʼяких меблів'), UPH.map((u) => line(u.name, eur(r.uph[u.id]), qty('u:' + u.id, state.uph[u.id] || 0, 10))).join(''))}
     ${card('rugs', 'rug', tl('Килими'), line(`${tl(`Килим до {0} м²`, small)}`, `${eur(r.rug)} ${tl(`/ шт`)}`, qty('rugs', state.rugs, 10), tl('біля ліжка, на кухні — фіксована ціна'))
-      + line(tl('Килим більшого розміру'), `${money(r.carpet)} ${tl(`/ м²`)}`, '', tl('за площею — однакова ставка для будь-якого розміру'))
+      + line(tl('Килим більшого розміру'), `${money(r.carpet)} ${tl(`/ м²`)}`, '', `${tl(`за площею, але не менше {0}`, eur(r.rug))}`)
       + `<button type="button" class="pc-tg pc-wide" data-xgo="rugs" aria-pressed="${!!cs}">${cs ? `${tl(`✓ Килим: {0} — змінити`, carpetLbl(cs, r))}` : tl('Вказати площу більшого килима')}</button>`)}
     ${card('mat', 'mattress', tl('Матраци'), MATTRESS.map((m) => line(m.id.replace('x', ' × ') + tl(' см'), eur(mp(m)), qty('m:' + m.id, state.matt[m.id] || 0, 6))).join('')
       + tl('<p class="pc-note">З обох боків — +25%: радимо для плям і запахів. Матрац висихає орієнтовно 6–12 годин.</p>'),
@@ -2055,7 +2059,7 @@ function fillFaq(list, key) {
   const half = (x) => Math.round(x * 2) / 2; // the hours of a tier are no longer whole: say them to the half hour
   const span = (a) => { const lo = half(Math.min(...a)), hi = half(Math.max(...a)); return lo === hi ? dec(lo) : `${tl(`від {0} до`, dec(lo))} ${dec(hi)}`; };
   const vals = { loc: c.loc, in: c.in, In: c.in.charAt(0).toUpperCase() + c.in.slice(1), min: eur(r.minVisit), rate: money(dec(r.windowHour)), hourly: money(dec(r.hourly)),
-    withVat: country() === 'sk' ? '' : tl(' з ПДВ'), carpet: money(r.carpet), windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '',
+    withVat: country() === 'sk' ? '' : tl(' з ПДВ'), carpet: money(r.carpet), rug: eur(r.rug), rugMax: String(r.rugMax), windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '',
     from: pk && cityPrices()[pk] ? `${tl(`від`)} ${eur(cityPrices()[pk][0])}` : '', time: crs.length ? span(crs.flatMap((x) => x.h)) : '', crew: crs.length ? span(crs.flatMap((x) => x.c)) : '' };
   const fill = (x) => x.replace(/\{(\w+)\}/g, (m, k) => (vals[k] != null ? vals[k] : m));
   return list.map(([q, a]) => [fill(q), fill(a)]);
@@ -2160,7 +2164,7 @@ function pageService() {
   // business service with its own story (windows, post-renovation):
   // what is included → how it is organised → how we do it → clients → the 24-hour offer → own questions → one more button → related B2B services
   if (kind === 'business' && s.own) {
-    const info = (s.inclInfo || []).map(([icn, x]) => `<div class="incl-info reveal">${ic(icn)}<p>${x}</p></div>`).join('');
+    const info = (s.inclInfo || []).map(([icn, x]) => `<div class="incl-info reveal">${ic(icn)}<p>${bizFill(x)}</p></div>`).join('');
     const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
     return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
       + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`)
@@ -2281,14 +2285,17 @@ function objInclSec(o) {
   return sec('incl', o.inclTitle, o.inclSub, inclGroups(o.incl) + gen + info);
 }
 // own questions of an object page: the price and VAT sentences depend on the country
-function objFaq(o) {
+function bizVals() {
   const sk = country() === 'sk';
-  const vals = { vat: sk ? tl('У Словаччині ми не є платниками ПДВ.') : tl('Ціни для бізнесу вказані netto, без ПДВ.'), kitchens: objHref('kitchens'),
-    bwrate: `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, bwmin: eur(sk ? 70 : BIZ.minOneOff),
+  return { vat: sk ? tl('У Словаччині ми не є платниками ПДВ.') : tl('Ціни для бізнесу вказані netto, без ПДВ.'), kitchens: objHref('kitchens'),
+    bwrate: `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, bwmin: eur(sk ? 70 : BIZ.minOneOff), bwblinds: `${money(WIN_BIZ.blinds)}${sk ? '' : ' netto'}`,
     aptprice: `${tl(`Прибирання між гостями — від {0} €{1} за апартамент до 50 м².`, Math.floor(APT[sk ? 'sk' : 'at'][0]), sk ? '' : ' netto')}`,
     priceoffice: sk ? tl('У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком робіт.') : `${tl(`Орієнтовну місячну вартість одразу покаже калькулятор — за площею офісу та графіком; при регулярному обслуговуванні — від {0} € netto за годину роботи клінера.`, dec(BIZ.rate))}`,
     price: sk ? tl('У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком зон.') : `${tl(`Регулярне обслуговування — від {0} € netto за годину роботи клінера. Орієнтовну місячну вартість одразу покаже калькулятор — за площею, графіком і зонами.`, dec(BIZ.rate))}` };
-  return o.faq.map(([q, a]) => [q, a.replace(/\{(\w+)\}/g, (m, k) => vals[k] || m)]);
+}
+const bizFill = (x) => { const v = bizVals(); return x.replace(/\{(\w+)\}/g, (m, k) => v[k] || m); };
+function objFaq(o) {
+  return o.faq.map(([q, a]) => [q, bizFill(a)]);
 }
 /* Business object pages: the calculator is taller than the text next to it, so the first screen had a hole on the left
    (owner, Oct 2026). It is filled with the four numbers and photos of the team at work; the photos take exactly the
