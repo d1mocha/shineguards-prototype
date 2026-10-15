@@ -56,6 +56,7 @@ const ORIG = new Map(); // a translated text of data.js → its Ukrainian source
 const tl = (s, ...a) => { let r = LANG !== 'ua' && I18N[s] != null ? I18N[s] : s; if (a.length) r = r.replace(/\{(\d+)\}/g, (m, i) => (a[+i] != null ? a[+i] : '')); return r; };
 const orig = (s) => ORIG.get(s) || s;
 const lc = (s) => (LANG === 'de' ? s : s.toLowerCase()); // a German noun keeps its capital letter
+const lc1 = (s) => (LANG === 'de' ? s : s.charAt(0).toLowerCase() + s.slice(1)); // the first letter only
 // plural forms: the Ukrainian 'one|few|many' is the key; the dictionary gives the forms of the language in the order of PL_ORDER
 const PL_ORDER = { ua: ['one', 'few', 'many'], ru: ['one', 'few', 'many'], sk: ['one', 'few', 'other'], en: ['one', 'other'], de: ['one', 'other'] };
 const PLR = new Intl.PluralRules(LOCALE);
@@ -534,9 +535,15 @@ function megaItems(kind) {
 // every language is named in itself — these names are never translated
 const LANGS = [['ua', 'Українська'], ['ru', 'Русский'], ['en', 'English'], ['de', 'Deutsch'], ['sk', 'Slovenčina']]; /*no-t*/ // each language is named in itself
 const LANG_NAME = Object.fromEntries(LANGS);
+// the languages whose pages are published (the shells list them); a language still being translated opens shineguards.com
+const LANG_READY = SINGLE ? SINGLE.langs || ['ua'] : (META.langs || 'ua').split(',');
+const langLink = (c, inner, cls = '') => LANG_READY.includes(c)
+  ? `<a href="${langHref(c)}" hreflang="${HTML_LANG[c]}" lang="${HTML_LANG[c]}"${cls}>${inner}</a>`
+  : `<a href="${BASE}/${state.city}/${c}" target="_blank" rel="noopener" hreflang="${HTML_LANG[c]}" lang="${HTML_LANG[c]}"${cls}>${inner}</a>`;
 function langMenuHTML() {
   return `<div class="lang-sw"><button type="button" class="lang" id="langBtn" aria-haspopup="true" aria-expanded="false" aria-label="${tl('Мова сайту')}: ${LANG_NAME[LANG]}">${LANG.toUpperCase()} ${chev}</button>
-    <div class="lang-menu" id="langMenu">${LANGS.map(([c, n]) => c === LANG ? `<span class="cur">${n}<b>✓</b></span>` : `<a href="${langHref(c)}" hreflang="${HTML_LANG[c]}" lang="${HTML_LANG[c]}">${n}<small>${c.toUpperCase()}</small></a>`).join('')}</div></div>`;
+    <div class="lang-menu" id="langMenu">${LANGS.map(([c, n]) => c === LANG ? `<span class="cur">${n}<b>✓</b></span>` : langLink(c, `${n}<small>${c.toUpperCase()}${LANG_READY.includes(c) ? '' : ' ↗'}</small>`)).join('')}
+    ${LANG_READY.length < LANGS.length ? `<p>${tl('Прототип — українською. Інші мови відкриються на поточному сайті.')}</p>` : ''}</div></div>`;
 }
 const CHAT_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 function headerHTML() {
@@ -567,7 +574,7 @@ function headerHTML() {
       <div class="mega-list">${megaItems(state.mode)}</div>
       <div class="links"><a href="${pageHref('about')}">${tl(`Про нас`)}</a><a href="${pageHref('promotions')}">${tl(`Акції`)}</a><a href="${pageHref('partnership')}">${tl(`Партнерство`)}</a><a href="${pageHref('contacts')}">${tl(`Контакти`)}</a></div>
       <div class="row2"><select data-city aria-label="${tl(`Місто`)}">${cityOptions()}</select><a class="call" href="${WA}" target="_blank" rel="noopener">WhatsApp</a></div>
-      <div class="m-meta"><span class="m-lang">${LANGS.map(([c]) => c === LANG ? `<b>${c.toUpperCase()}</b>` : `<a href="${langHref(c)}" hreflang="${HTML_LANG[c]}">${c.toUpperCase()}</a>`).join('')}</span><a class="rating" href="${GMAPS}" target="_blank" rel="noopener"><span class="g">${G_SVG}</span>4,9/5 <i class="stars">★★★★★</i></a></div>
+      <div class="m-meta"><span class="m-lang">${LANGS.map(([c]) => c === LANG ? `<b>${c.toUpperCase()}</b>` : langLink(c, c.toUpperCase())).join('')}</span><a class="rating" href="${GMAPS}" target="_blank" rel="noopener"><span class="g">${G_SVG}</span>4,9/5 <i class="stars">★★★★★</i></a></div>
     </div>
   </div></header>`;
 }
@@ -672,7 +679,7 @@ function privInputs() {
       <div class="freqs">${FREQ.map((x) => `<button type="button" class="chip" data-freq="${x.id}" aria-pressed="${state.freq === x.id}">${x.label}${x.disc ? ` <span class="save">−${Math.round(x.disc * 100)}%</span>` : ''}</button>`).join('')}</div>`;
     if ((state.freq === 'weekly' || state.freq === 'biweekly') && PLAN_UP[state.type].length) {
       const opts = PLAN_UP[state.type], on = !!state.planUp && opts.includes(state.planUp);
-      h += `<div style="margin-top:6px">${checkrow('plan', on, tl('Раз на місяць — ретельніше прибирання'), `${tl(`одне з прибирань місяця —`)} ${on ? TYPES[state.planUp].name.toLowerCase() : opts.map((o) => TYPES[o].name.toLowerCase()).join(tl(' або '))}`, '')}
+      h += `<div style="margin-top:6px">${checkrow('plan', on, tl('Раз на місяць — ретельніше прибирання'), `${tl(`одне з прибирань місяця —`)} ${on ? lc(TYPES[state.planUp].name) : opts.map((o) => lc(TYPES[o].name)).join(tl(' або '))}`, '')}
         ${on && opts.length > 1 ? `<div class="subrow" style="justify-content:flex-start">${opts.map((o) => chip('data-planup', o, state.planUp, TYPES[o].name)).join('')}</div>` : ''}</div>`;
     }
   }
@@ -724,7 +731,7 @@ function privOut() {
     <div class="p-row"><div class="p-value num"><span id="pNum" data-v="${c.range ? '' : c.total}">${main}</span>${savings}</div><div class="p-meta">${meta}</div></div>`;
   if (c.plan) {
     const n = state.freq === 'weekly' ? '≈ 4' : state.freq === 'biweekly' ? '≈ 2' : '1';
-    h += `<div class="p-plan"><span>${FREQ.find((x) => x.id === state.freq).label} ${tl(`· {0} на місяць`, n)}${c.plan.up ? ` <small class="muted">(1 — ${TYPES[c.plan.up].name.toLowerCase()})</small>` : ''}</span><b class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</b></div>`;
+    h += `<div class="p-plan"><span>${FREQ.find((x) => x.id === state.freq).label} ${tl(`· {0} на місяць`, n)}${c.plan.up ? ` <small class="muted">(1 — ${lc(TYPES[c.plan.up].name)})</small>` : ''}</span><b class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</b></div>`;
   }
   h += `<div class="p-vat">${flags.map((x) => `<span>${x}</span>`).join('')}</div>`;
   if (c.range && state.type === 'windows') h += APPROX_NOTE;
@@ -848,15 +855,15 @@ function windowsWizard() {
 }
 // windows: the price is confirmed by photos — the estimate can go straight to WhatsApp, photos follow in the chat
 function waPhotoLink() {
-  const w = state.win, c = computePriv(), list = winTypes().filter((t) => w[t.id]).map((t) => `${w[t.id]} × ${t.name.toLowerCase()}`).join(', ');
+  const w = state.win, c = computePriv(), list = winTypes().filter((t) => w[t.id]).map((t) => `${w[t.id]} × ${lc(t.name)}`).join(', ');
   const txt = `${tl(`Добрий день! Хочу помити вікна ({0}){1}. Надсилаю фото.`, CITIES[state.city].name, list ? `: ${list}; ${w.sides === 2 ? tl('з обох боків') : tl('лише зсередини')}${c.range ? `${tl(`; орієнтовно`)} ${rangeTxt(c.range)}` : ''}` : '')}`;
   return `<a class="cta-alt" href="${WA}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото у WhatsApp`)}</a>`;
 }
-const winAccessLine = () => state.type === 'windows' && state.win.sides === 2 && state.win.access ? `<div class="ln sm"><span>${tl(`Доступ до зовнішньої сторони:`)} ${WIN_ACCESS.find(([id]) => id === state.win.access)[1].toLowerCase()}</span></div>` : '';
+const winAccessLine = () => state.type === 'windows' && state.win.sides === 2 && state.win.access ? `<div class="ln sm"><span>${tl(`Доступ до зовнішньої сторони:`)} ${lc(WIN_ACCESS.find(([id]) => id === state.win.access)[1])}</span></div>` : '';
 // Transparent estimate: time per window type × hourly rate
 function winBreakdownHTML(rate, min) {
   const w = state.win, dd = WIN_DIRT[w.dirt], biz = !P(), hard = biz && w.sides === 2 && w.baccess === 'high', sides = hard ? 1 : w.sides;
-  const rows = winTypes().filter((t) => w[t.id]).map((t) => [`${w[t.id]} × ${t.name.toLowerCase()}`, w[t.id] * winPer(t, dd, sides)]);
+  const rows = winTypes().filter((t) => w[t.id]).map((t) => [`${w[t.id]} × ${lc(t.name)}`, w[t.id] * winPer(t, dd, sides)]);
   if (biz && w.facade) rows.push([`${tl(`Вітрини або фасад · {0} м²`, w.facade)}`, w.facade * dd.glass * sides * WIN_BIZ.facade.k]);
   if (!rows.length) return '';
   const base = rows.reduce((a, r) => a + r[1], 0), sash = winSashes();
@@ -942,7 +949,7 @@ function hospInputs() {
     <p class="biz-note">${tl(`Готелі розраховуємо індивідуально: вартість залежить від кількості номерів, типу прибирання та графіка.`)}</p>`;
 }
 function aptOutHTML(c, withVat) {
-  const ctry = country(), low = (x) => x.charAt(0).toLowerCase() + x.slice(1);
+  const ctry = country(), low = lc1;
   const tax = ctry === 'sk' ? tl('Фінальна ціна') : withVat ? tl('Ціна з ПДВ') : `${tl(`Ціна netto + {0} ПДВ`, CTRY[ctry].pct)}`;
   const lines = c.rows.map((r) => `<div class="ln"><span>${r.n} ${tl(`× {0} м²`, r.sqm)}</span><span>${eur2(r.each)} ${tl(`за прибирання`)}</span></div>`).join('');
   return `<div class="price-box"><div class="p-label">${c.N > 1 ? `${tl(`За прибирання всіх`)} ${c.N} ${aptWord(c.N)}` : tl('За одне прибирання')}${c.ctype ? ` · ${low(c.ctype.name)}` : ''}</div>
@@ -1007,10 +1014,10 @@ function privOutB() {
     if (reg) {
       h += `<div class="freqs reg-opts">${FREQ.filter((x) => x.disc).map((x) => `<button type="button" class="chip" data-freq="${x.id}" aria-pressed="${state.freq === x.id}">${x.label} <span class="save">−${Math.round(x.disc * 100)}%</span></button>`).join('')}</div>`;
       const n = state.freq === 'weekly' ? '≈ 4' : state.freq === 'biweekly' ? '≈ 2' : '1';
-      if (c.plan) h += `<div class="p-plan"><span>${n} ${tl(`на місяць`)}${c.plan.up ? ` <small class="muted">(1 — ${TYPES[c.plan.up].name.toLowerCase()})</small>` : ''}</span><b class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</b></div>`;
+      if (c.plan) h += `<div class="p-plan"><span>${n} ${tl(`на місяць`)}${c.plan.up ? ` <small class="muted">(1 — ${lc(TYPES[c.plan.up].name)})</small>` : ''}</span><b class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</b></div>`;
       if ((state.freq === 'weekly' || state.freq === 'biweekly') && PLAN_UP[state.type].length) {
         const opts = PLAN_UP[state.type], on = !!state.planUp && opts.includes(state.planUp);
-        h += `<div style="margin-top:4px">${checkrow('plan', on, tl('Раз на місяць — ретельніше'), `${tl(`одне з прибирань —`)} ${on ? TYPES[state.planUp].name.toLowerCase() : opts.map((o) => TYPES[o].name.toLowerCase()).join(tl(' або '))}`, '')}
+        h += `<div style="margin-top:4px">${checkrow('plan', on, tl('Раз на місяць — ретельніше'), `${tl(`одне з прибирань —`)} ${on ? lc(TYPES[state.planUp].name) : opts.map((o) => lc(TYPES[o].name)).join(tl(' або '))}`, '')}
           ${on && opts.length > 1 ? `<div class="subrow" style="justify-content:flex-start">${opts.map((o) => chip('data-planup', o, state.planUp, TYPES[o].name)).join('')}</div>` : ''}</div>`;
       }
     }
@@ -1058,7 +1065,7 @@ function bizSoloInputs() {
 }
 // the client's answers in words — for the request form and the WhatsApp message
 function soloAnswers(c) {
-  const cfg = SOLO_B, st = state.bs, kt = soloType(), low = (x) => x.charAt(0).toLowerCase() + x.slice(1), rows = [];
+  const cfg = SOLO_B, st = state.bs, kt = soloType(), low = lc1, rows = [];
   rows.push(`${kt ? `${kt.name} ${tl(`· кухня`)}` : cfg.kinds[st.kind]} ${st.area} ${tl(`м²`)}${c.oneOff ? '' : ` · ${soloFreqTxt()}`}`);
   if (LITE) return rows; // the home asks three questions only
   if (cfg.times) rows.push(`${tl(`Час прибирання:`)} ${low(cfg.times.find(([k]) => k === st.time)[1])}`);
@@ -1086,7 +1093,7 @@ function bizSoloOut(c) {
   const more = `<details class="p-more"><summary>${tl(`Що входить у вартість?`)}</summary>
       <div class="pills">${[tl('Засоби та інвентар'), tl('Клінери за чек-листом'), tl('Контроль якості'), tl('Договір і документи'), tl('Персональний менеджер')].map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div>
       <p>${c.oneOff ? '' : `${tl(`Ставка — {0} при регулярному обслуговуванні.`, nb(`${tl(`від {0} € netto / год`, dec(BIZ.rate))}`))} `}${tl(`Розрахунок орієнтовний і не є комерційною пропозицією: кількість клінерів, тривалість візиту й фінальну вартість розраховуємо ми — і фіксуємо в пропозиції.`)}${cfg.outNote ? ' ' + cfg.outNote : ''}</p></details>`;
-  const wa = c.photo ? `<a class="cta-alt" href="${waHref(`${tl(`Добрий день! Потрібне прибирання професійної кухні ({0}): {1}. Надсилаю фото.`, CITIES[state.city].name, soloAnswers(c).join('; ').toLowerCase())}`)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото кухні у WhatsApp`)}</a>` : '';
+  const wa = c.photo ? `<a class="cta-alt" href="${waHref(`${tl(`Добрий день! Потрібне прибирання професійної кухні ({0}): {1}. Надсилаю фото.`, CITIES[state.city].name, lc(soloAnswers(c).join('; ')))}`)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото кухні у WhatsApp`)}</a>` : '';
   return `<div class="price-box"><div class="p-label">${tl(`Орієнтовна вартість прибирання`)}</div>
     <div class="p-row"><div class="p-value num rg"><span class="rgv">≈ ${soloRange(c)}</span> <span class="per">netto${c.oneOff ? '' : tl(' / міс')}</span></div></div>
     <div class="p-for">${soloAnswers(c)[0]}</div>${photo}
@@ -1148,7 +1155,7 @@ function bizOutB() {
   if (c.request || c.winEmpty) return bizOut();
   if (c.apt) return aptOutHTML(c, false).replace(/<\/div>$/, `${note}</div>`) + foot(tl('Отримати пропозицію'));
   if (c.win) {
-    const w = state.win, reg = WIN_BIZ.regular.find(([k]) => k === w.regular)[1].toLowerCase();
+    const w = state.win, reg = lc(WIN_BIZ.regular.find(([k]) => k === w.regular)[1]);
     const wa = `<a class="cta-alt" href="${waHref(`${tl(`Добрий день! Потрібне миття вікон для бізнесу ({0}). Надсилаю фото.`, CITIES[state.city].name)}`)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото у WhatsApp`)}</a>`;
     return `<div class="price-box"><div class="p-label">${tl(`Орієнтовно за одне миття`)}${w.regular === 'once' ? '' : ` · ${reg}`}</div><div class="p-row"><div class="p-value num">${rangeTxt(c.range)}</div></div>
       <div class="p-sub">${tax} ${tl(`· {0} € / год · мінімальне замовлення`, dec(c.rate))} ${eur(c.min)}</div>
@@ -1760,7 +1767,7 @@ function wipeSec() {
     <div class="wipe-text">
       <span class="wipe-tag">${tl(`Міні-гра`)}</span>
       <h2 class="sec-title">${tl(`Протріть вікно — і отримайте −10%`)}</h2>
-      <p class="sec-sub">${tl(`Під шаром пилу ховається {0} {1}. Проведіть курсором або пальцем по склу — коли вікно засяє, Welcome-бонус на перше прибирання ваш.`, state.city === 'bratislava' ? tl('сонячна') : tl('сонячний'), CITIES[state.city].name)}</p>
+      <p class="sec-sub">${tl(`Під шаром пилу ховається {0}. Проведіть курсором або пальцем по склу — коли вікно засяє, Welcome-бонус на перше прибирання ваш.`, { vienna: tl('сонячний Відень'), graz: tl('сонячний Грац'), munich: tl('сонячний Мюнхен'), bratislava: tl('сонячна Братислава') }[state.city])}</p>
       <div class="wipe-meter" aria-live="polite"><div class="bar"><i id="wipeBar"></i></div><div class="lbl"><b id="wipePct">0%</b><span id="wipeMsg">${WIPE_MSG[0][1]}</span></div></div>
       <button type="button" class="wipe-auto" data-wipe="auto">${ic('spray')}${tl(`Помити за мене`)}</button>
     </div>
@@ -2183,7 +2190,7 @@ function demoCase(id) {
   return { demo: true, kind: o.name, name: tl('Тут буде назва клієнта'), place: tl('місто, район'),
     facts: [[tl('Площа')], [tl('Графік')], [tl('Команда')], [tl('Працюємо разом')]],
     task: tl('Задача клієнта: з чим він до нас прийшов і що для нього було важливо.'),
-    work: o.incl.slice(0, 4).map((g) => `${g.t} — ${g.items.slice(0, 2).join(', ').toLowerCase()}`),
+    work: o.incl.slice(0, 4).map((g) => `${g.t} — ${lc(g.items.slice(0, 2).join(', '))}`),
     result: tl('Результат у фактах: що змінилося для клієнта, цифри, терміни.'),
     quote: [tl('Відгук клієнта — одне-два речення своїми словами.'), tl('Імʼя, посада')] };
 }
@@ -2330,7 +2337,7 @@ function finalCtaSec() {
   </div></div></section>`;
 }
 function pagePromotions() {
-  const tiers = `<div class="tiers">${FREQ.filter((x) => x.disc).reverse().map((x) => `<div class="tier ${x.id === 'weekly' ? 'best' : ''}"><b>−${Math.round(x.disc * 100)}%</b><span>${x.label.toLowerCase()} ${tl(`— на кожне прибирання`)}</span></div>`).join('')}</div>`;
+  const tiers = `<div class="tiers">${FREQ.filter((x) => x.disc).reverse().map((x) => `<div class="tier ${x.id === 'weekly' ? 'best' : ''}"><b>−${Math.round(x.disc * 100)}%</b><span>${lc(x.label)} ${tl(`— на кожне прибирання`)}</span></div>`).join('')}</div>`;
   const side = P()
     ? `<div class="side-card"><h2>${tl(`Регулярне прибирання дешевше`)}</h2><p class="muted">${tl(`Знижка діє на кожне прибирання за графіком.`)}</p>${tiers}<a class="cta" href="${svcHref('basic', 'private')}?freq=weekly">${tl(`Розрахувати зі знижкою`)}</a></div>`
     : `<div class="side-card"><h2>${tl(`Знижки для бізнесу`)}</h2><div class="tiers"><div class="tier best"><b>${tl(`Індивідуально`)}</b><span>${tl(`для великих обсягів і мереж локацій`)}</span></div><div class="tier"><b>${tl(`до −10%`)}</b><span>${tl(`для керуючих апартаментами — залежно від обсягу`)}</span></div></div><button type="button" class="cta" data-open="book" data-bizgoal="${tl(`Індивідуальний розрахунок`)}">${tl(`Отримати індивідуальний розрахунок`)}</button></div>`;
@@ -2463,7 +2470,7 @@ function summaryLines(c) {
     if (!state.touched || c.reno || c.bigArea || c.aptBig) return '';
     if (c.apt) return `<div class="sumbox">${c.rows.map((r) => `<div class="ln"><span>${tl(`Апартаменти {0} м² ×`, r.sqm)} ${r.n}</span><span class="num">${eur2(r.each * r.n)}</span></div>`).join('')}${c.disc ? tl('<div class="ln g"><span>Застосовано обʼємну ставку</span><span>✓</span></div>') : ''}<div class="ln tot"><span>${tl(`За одне прибирання`)}</span><span class="num">${eur2(c.price)}</span></div><div class="ln sm"><span>${CTRY[country()].incl}</span></div></div>`;
     if (!c.total) return '';
-    const plan = c.plan ? `<div class="ln"><span>${FREQ.find((x) => x.id === state.freq).label}${c.plan.up ? ` ${tl(`· раз на місяць —`)} ${TYPES[c.plan.up].name.toLowerCase()}` : ''}</span><span class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</span></div>` : '';
+    const plan = c.plan ? `<div class="ln"><span>${FREQ.find((x) => x.id === state.freq).label}${c.plan.up ? ` ${tl(`· раз на місяць —`)} ${lc(TYPES[c.plan.up].name)}` : ''}</span><span class="num">${tl(`≈ {0} / міс`, eur(c.plan.month))}</span></div>` : '';
     return `<div class="sumbox">${c.lines.map((l) => `<div class="ln"><span>${l.name}</span><span class="num">${eur2(l.price)}</span></div>`).join('')}
       ${c.gifts.map((l) => `<div class="ln g"><span>${l.name}</span><span class="num">−${eur(-l.price)}</span></div>`).join('')}
       ${c.minApplied ? `<div class="ln"><span>${tl(`Мінімальне замовлення`)}</span><span class="num">${eur(R().minVisit)}</span></div>` : ''}
@@ -2473,7 +2480,7 @@ function summaryLines(c) {
   if (state.touched && c.solo && c.request === 'quote') return `<div class="sumbox">${soloAnswers(c).map((x) => `<div class="ln"><span>${x}</span><span></span></div>`).join('')}<div class="ln sm"><span>${CITIES[state.city].name} · ${SOLO_B.quoteText}</span></div></div>`;
   if (state.touched && c.request === 'hotel') { // no price for a hotel, but the manager gets the client's answers
     const a = state.apt;
-    return `<div class="sumbox"><div class="ln"><span>${tl(`Готель ·`)} ${a.rooms} ${roomWord(a.rooms)}</span><span></span></div><div class="ln"><span>${tl(`Прибирання:`)} ${HOSP.hotelTypes.find(([k]) => k === a.htype)[1].toLowerCase()}</span><span></span></div><div class="ln sm"><span>${CITIES[state.city].name} ${tl(`· вартість розрахуємо індивідуально`)}</span></div></div>`;
+    return `<div class="sumbox"><div class="ln"><span>${tl(`Готель ·`)} ${a.rooms} ${roomWord(a.rooms)}</span><span></span></div><div class="ln"><span>${tl(`Прибирання:`)} ${lc(HOSP.hotelTypes.find(([k]) => k === a.htype)[1])}</span><span></span></div><div class="ln sm"><span>${CITIES[state.city].name} ${tl(`· вартість розрахуємо індивідуально`)}</span></div></div>`;
   }
   if (!state.touched || c.request || c.winEmpty) return '';
   const b = state.biz, obj = BIZ_OBJ.find((o) => o.id === b.obj).name, sk = c.ctry === 'sk';
@@ -2487,7 +2494,7 @@ function summaryLines(c) {
     if (c.win) rows.push([`${tl(`Миття вікон · {0} год`, b.winHours)}`, '']);
     rows.push([`<b>${c.oneOff ? tl('Орієнтовно за прибирання') : tl('Орієнтовно на місяць')}</b>`, `<b>≈ ${eur(c.oneOff ? c.perVisit : c.month)}</b>`]);
   } else if (c.apt) {
-    rows.push([`${state.apt.kind === 'aparthotel' ? tl('Апарт-готель') : tl('Апартаменти / Airbnb')} · ${c.ctype.name.charAt(0).toLowerCase() + c.ctype.name.slice(1)}`, '']);
+    rows.push([`${state.apt.kind === 'aparthotel' ? tl('Апарт-готель') : tl('Апартаменти / Airbnb')} · ${lc1(c.ctype.name)}`, '']);
     c.rows.forEach((r) => rows.push([`${tl(`Апартаменти {0} м² ×`, r.sqm)} ${r.n}`, eur2(r.each * r.n)]));
     if (c.commonMonth) rows.push([`${tl(`Загальні зони · {0} м² · щодня`, c.commonArea)}`, `${tl(`≈ {0} / міс`, soloRange({ range: c.commonMonth }))}`]);
     if (c.disc) rows.push([tl('Застосовано обʼємну ставку'), '✓']);
@@ -2497,7 +2504,7 @@ function summaryLines(c) {
     rows.push([`${tl(`Миття вікон · {0} · {1} · до`, parts, c.hard || w.sides === 1 ? tl('зсередини') : tl('з обох боків'))} ${dur(c.upTo)}`, '']);
     if (c.hard) rows.push([tl('Зовнішня сторона — складний доступ, оцінка окремо'), '']);
     if (c.blinds) rows.push([`${tl(`Жалюзі · {0} вікон`, Math.min(w.blinds, winCount()))}`, eur(c.blinds)]);
-    if (w.regular !== 'once') rows.push([`${tl(`Графік:`)} ${WIN_BIZ.regular.find(([k]) => k === w.regular)[1].toLowerCase()}`, '']);
+    if (w.regular !== 'once') rows.push([`${tl(`Графік:`)} ${lc(WIN_BIZ.regular.find(([k]) => k === w.regular)[1])}`, '']);
     rows.push([tl('<b>Орієнтовно</b>'), `<b>${rangeTxt(c.range)}</b>`]);
   }
   return `<div class="sumbox">${rows.map(([a, v]) => `<div class="ln"><span>${a}</span><span class="num">${v}</span></div>`).join('')}<div class="ln sm"><span>${CITIES[state.city].name} ${tl(`· {0} · орієнтовний розрахунок, не є комерційною пропозицією`, sk ? tl('ми не є платниками ПДВ') : 'netto')}</span></div></div>`;
