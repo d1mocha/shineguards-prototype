@@ -1906,3 +1906,12 @@ details.p-more p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color:
 /* renovation: what to send for the estimate, folded under the buttons of the side card */
 .side-how { margin-top: 12px; }
 .side-how .how-b p { margin: 0; color: var(--ink2); line-height: 1.45; }
+
+/* Round 33: the owner's story — three years with longer texts; mission paragraphs */
+.story.c3 { grid-template-columns: repeat(3, 1fr); }
+.story p + p, .mission p + p { margin-top: 10px; }
+@media (max-width: 1100px) {
+  .story.c3 { grid-template-columns: 1fr; gap: 12px; }
+  .story.c3::before { display: block; left: 9px; right: auto; top: 10px; bottom: 10px; width: 2px; height: auto; background: linear-gradient(180deg, var(--blue), #BFD6F5); }
+  .story.c3 li { padding: 0 0 0 34px; }
+}

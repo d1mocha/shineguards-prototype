@@ -339,11 +339,12 @@ function aptCalc(withVat) {
 }
 // Carpets: the flat price of a small one equals about 8 m² at the price by the m² (130 € ≈ 8 × 16 €), so «small» is
 // up to that size; a bigger carpet is counted by its area and never costs less than the small one
-const carpetSmall = (r = R()) => Math.round(r.rug / r.carpet[0]);
-const carpetRate = (m2, r = R()) => (m2 <= 10 ? r.carpet[0] : m2 <= 15 ? r.carpet[1] : r.carpet[2]);
-const carpetPrice = (m2, r = R()) => (m2 ? Math.max(r.rug, m2 * carpetRate(m2, r)) : 0);
-const carpetLbl = (m2, r = R()) => (!m2 ? tl('не потрібно') : m2 <= carpetSmall(r) ? `${tl(`до {0} м² ·`, carpetSmall(r))} ${eur(r.rug)}` : `${m2} ${tl(`м² ·`)} ${eur(carpetPrice(m2, r))}`);
-const carpetTiers = (r = R()) => `${tl(`до {0} м² — {1} · до 10 м² — {2} €/м² · 10–15 м² — {3} €/м² · від 15 м² — {4} €/м²`, carpetSmall(r), eur(r.rug), r.carpet[0], r.carpet[1], r.carpet[2])}`;
+// one price per m² for any carpet (owner, 2026-10-15); small rugs up to rugMax m² go per piece at the same rate
+const carpetSmall = (r = R()) => r.rugMax;
+const carpetRate = (m2, r = R()) => r.carpet;
+const carpetPrice = (m2, r = R()) => (m2 ? m2 * r.carpet : 0);
+const carpetLbl = (m2, r = R()) => (!m2 ? tl('не потрібно') : `${m2} ${tl(`м² ·`)} ${eur(carpetPrice(m2, r))}`);
+const carpetTiers = (r = R()) => `${tl(`{0} за м² — однакова ставка для килима будь-якого розміру`, money(r.carpet))}`;
 const aptWord = (n) => pl(n, 'апартамент|апартаменти|апартаментів');
 function computePriv() {
   const city = CITIES[state.city], r = R();
@@ -401,7 +402,7 @@ function computePriv() {
     }
     if (state.carpet) {
       const s = state.carpet, price = carpetPrice(s, r);
-      out.lines.push({ name: s <= carpetSmall(r) ? `${tl(`Килим до {0} м²`, carpetSmall(r))}` : `${tl(`Килим {0} м² × {1} €/м²`, s, carpetRate(s, r))}`, price }); out.extrasCount++;
+      out.lines.push({ name: `${tl(`Килим {0} м² × {1} €/м²`, s, carpetRate(s, r))}`, price }); out.extrasCount++;
       if (s <= 10) chemUnits.push({ min: 60, p: price });
     }
     for (const m of MATTRESS) {
@@ -858,7 +859,7 @@ function windowsWizard() {
       ${w.blinds > 0 ? `<div class="subrow">${tl(`На скількох стулках?`)} ${stepper('w:blinds', w.blinds, Math.max(sashes, 1), 1)}</div>` : ''}`;
   } else {
     body = (w.sides === 2 ? `<p class="wz-q">${tl(`Чи є безпечний доступ до зовнішньої сторони?`)}</p><div class="optcards">${WIN_ACCESS.map(([id, t, x]) => `<button type="button" class="optcard" data-wopt="access" data-v="${id}" aria-pressed="${w.access === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>
-      <p class="wz-hint">${tl(`Ззовні миємо без спеціального висотного обладнання. Якщо доступ складний — менеджер уточнить за фото.`)}</p>` : '')
+      <p class="wz-hint">${tl(`Ззовні миємо за умови безпечного доступу — можливість менеджер визначає за фото та умовами доступу.`)}</p>` : '')
       + `<p class="wz-q">${tl(`Наскільки брудні вікна?`)}</p><div class="optcards">${Object.entries(WIN_DIRT).map(([k, dd]) => `<button type="button" class="optcard" data-wopt="dirt" data-v="${k}" aria-pressed="${w.dirt === k}"><b>${dd.name}</b><small>${dd.sub}</small></button>`).join('')}</div>
       <p class="wz-q">${tl(`Особливості`)} <span>${tl(`необовʼязково`)}</span></p>
       ${checkrow('w:high', w.high, tl('Вікна вище 2 метрів'), tl('потрібна драбина'), '')}
@@ -926,7 +927,7 @@ function chemWizard() {
   const r = R(), st = state.chemStep, any = state.chemCats.size > 0;
   let body;
   if (st === 1) {
-    const from = { sofa: r.uph['2seater'], chairs: r.uph.pouf, mat: MATTRESS[0].p, rugs: r.carpet[2] };
+    const from = { sofa: r.uph['2seater'], chairs: r.uph.pouf, mat: MATTRESS[0].p, rugs: r.carpet };
     body = `<p class="wz-q">${tl(`Що будемо чистити?`)} <span>${tl(`можна кілька`)}</span></p>
       <div class="ctiles">${CHEM_CATS.map((c) => { const n = chemCount(c);
         return `<button type="button" class="ctile" data-chemcat="${c.id}" aria-pressed="${state.chemCats.has(c.id)}">${ic(c.icon)}<b>${c.name}</b><small>${tl(`від`)} ${eur(from[c.id])}${c.id === 'rugs' ? tl(' / м²') : ''}</small>${n ? `<span class="cnt">${n}</span>` : ''}</button>`; }).join('')}</div>`;
@@ -1698,7 +1699,7 @@ function pricesHTML() {
       + `<p class="pc-note">${SOLO_PAGE.extras.hourly}</p><p class="pc-note">${tl(`Мінімальне замовлення — {0}: це близько {1} год {2} хв роботи.`, eur(r.minVisit), Math.floor(minMin / 60), minMin % 60)}</p>`) : ''}
     ${card('chem', 'sofa', tl('Хімчистка мʼяких меблів'), UPH.map((u) => line(u.name, eur(r.uph[u.id]), qty('u:' + u.id, state.uph[u.id] || 0, 10))).join(''))}
     ${card('rugs', 'rug', tl('Килими'), line(`${tl(`Килим до {0} м²`, small)}`, `${eur(r.rug)} ${tl(`/ шт`)}`, qty('rugs', state.rugs, 10), tl('біля ліжка, на кухні — фіксована ціна'))
-      + line(`${tl(`Килим {0}–10 м²`, small)}`, `${r.carpet[0]} ${tl(`€ / м²`)}`) + line(tl('Килим 10–15 м²'), `${r.carpet[1]} ${tl(`€ / м²`)}`) + line(tl('Килим від 15 м²'), `${r.carpet[2]} ${tl(`€ / м²`)}`)
+      + line(tl('Килим більшого розміру'), `${money(r.carpet)} ${tl(`/ м²`)}`, '', tl('за площею — однакова ставка для будь-якого розміру'))
       + `<button type="button" class="pc-tg pc-wide" data-xgo="rugs" aria-pressed="${!!cs}">${cs ? `${tl(`✓ Килим: {0} — змінити`, carpetLbl(cs, r))}` : tl('Вказати площу більшого килима')}</button>`)}
     ${card('mat', 'mattress', tl('Матраци'), MATTRESS.map((m) => line(m.id.replace('x', ' × ') + tl(' см'), eur(mp(m)), qty('m:' + m.id, state.matt[m.id] || 0, 6))).join('')
       + tl('<p class="pc-note">З обох боків — +25%: радимо для плям і запахів. Матрац висихає орієнтовно 6–12 годин.</p>'),
@@ -2054,7 +2055,7 @@ function fillFaq(list, key) {
   const half = (x) => Math.round(x * 2) / 2; // the hours of a tier are no longer whole: say them to the half hour
   const span = (a) => { const lo = half(Math.min(...a)), hi = half(Math.max(...a)); return lo === hi ? dec(lo) : `${tl(`від {0} до`, dec(lo))} ${dec(hi)}`; };
   const vals = { loc: c.loc, in: c.in, In: c.in.charAt(0).toUpperCase() + c.in.slice(1), min: eur(r.minVisit), rate: money(dec(r.windowHour)), hourly: money(dec(r.hourly)),
-    withVat: country() === 'sk' ? '' : tl(' з ПДВ'), windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '',
+    withVat: country() === 'sk' ? '' : tl(' з ПДВ'), carpet: money(r.carpet), windows: svcHref('windows', 'private'), n: n ? `${n} ${tasksWord(n)}` : '',
     from: pk && cityPrices()[pk] ? `${tl(`від`)} ${eur(cityPrices()[pk][0])}` : '', time: crs.length ? span(crs.flatMap((x) => x.h)) : '', crew: crs.length ? span(crs.flatMap((x) => x.c)) : '' };
   const fill = (x) => x.replace(/\{(\w+)\}/g, (m, k) => (vals[k] != null ? vals[k] : m));
   return list.map(([q, a]) => [fill(q), fill(a)]);
@@ -2343,10 +2344,10 @@ function pageAbout() {
     + statsStripSec(STATS_PRIVATE) + storySec() + missionSec() + peopleSec() + principlesSec() + audienceSec() + socialProofSec() + finalCtaSec() + contactsSec();
 }
 function storySec() {
-  return sec('story', tl('Як починався Shine Guards'), '', `<ol class="story">${STORY.map(([tag, t, d], i) => `<li class="pop" style="--i:${i}"><span class="st-dot" aria-hidden="true"></span><div class="st-card">${tag ? `<span class="st-tag">${tag}</span>` : ''}<h3>${t}</h3><p>${d}</p></div></li>`).join('')}</ol>`);
+  return sec('story', tl('Наша історія'), '', `<ol class="story c${STORY.length}">${STORY.map(([tag, t, d], i) => `<li class="pop" style="--i:${i}"><span class="st-dot" aria-hidden="true"></span><div class="st-card">${tag ? `<span class="st-tag">${tag}</span>` : ''}<h3>${t}</h3>${[].concat(d).map((x) => `<p>${x}</p>`).join('')}</div></li>`).join('')}</ol>`);
 }
 function missionSec() {
-  return sec('mission', tl('Місія та мета'), '', `<div class="mission">${MISSION.map(([t, d], i) => `<div class="pop" style="--i:${i}">${ic(i ? 'towers' : 'spray')}<h3>${t}</h3><p>${d}</p></div>`).join('')}</div>`);
+  return sec('mission', tl('Наша місія'), '', `<div class="mission">${MISSION.map(([t, d], i) => `<div class="pop" style="--i:${i}">${ic(i ? 'towers' : 'spray')}<h3>${t}</h3>${[].concat(d).map((x) => `<p>${x}</p>`).join('')}</div>`).join('')}</div>`);
 }
 function peopleSec() {
   const f = FOUNDER;
