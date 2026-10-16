@@ -495,27 +495,33 @@ function computeBizSolo(id) {
   // kitchens: upkeep on a schedule is a monthly sum; upkeep once, a general cleaning and degreasing are priced per cleaning
   const kt = soloType(), once = !!kt && kt.regular && st.kfmt === 'once', oneOff = !!kt && (!kt.regular || once), perWeek = oneOff ? 0 : soloFreq();
   const zones = cfg.zones.filter((z) => st.zones.has(z.id));
-  let hours;
+  let hours, over = 0; // over: the work counted on top of the minimum visit
   if (kt) { // kitchens: the kind of work sets the pace, the soiling and the chosen equipment scale it
     const dirt = cfg.dirt.find(([k]) => k === st.dirt)[2], k = 1 + (dirt - 1) * (once || kt.dirtK == null ? 1 : kt.dirtK);
     hours = (once ? 0 : kt.setup || 0) + st.area / (once ? kt.onceNorm : kt.norm) * zones.reduce((a, z) => a + z.share, 0) * k;
   } else {
     // the more often we come, the less there is to do per visit (gyms: zones are done by turns)
-    const clean = zones.reduce((a, z) => a + st.area * z.share / z.norm, 0) * ((cfg.freqK && cfg.freqK[perWeek]) || 1);
+    const fk = (cfg.freqK && cfg.freqK[perWeek]) || 1, zh = (z) => st.area * z.share / z.norm * fk;
+    const clean = zones.reduce((a, z) => a + zh(z), 0);
     // the showcases of a shop are not counted from its area: they are priced after photos (glassPhoto)
     const glass = cfg.glass && !cfg.glassPhoto && st.glass !== 'no' ? Math.max(cfg.glassMin, clean * cfg.glassK) : 0;
-    hours = cfg.setup + clean + glass + (cfg.adds || []).reduce((a, [k, , h]) => a + (st.adds.has(k) ? h : 0), 0);
+    const adds = (cfg.adds || []).reduce((a, [k, , h]) => a + (st.adds.has(k) ? h : 0), 0);
+    // owner, 2026-10-16 («добавляй»): a ticked kitchen always adds to the price, also when the rest of the venue fits in
+    // the minimum visit; a shop's extra zones the same way
+    over = zones.filter((z) => z.over).reduce((a, z) => a + zh(z), 0) + (cfg.addsOver ? adds : 0);
+    hours = cfg.setup + clean + glass + adds;
   }
   const monthHours = oneOff ? hours : hours * perWeek * BIZ.weeks;
   if (oneOff ? hours > 60 : monthHours >= BIZ.bigHours) return { ...base, request: 'big' };
   // a kitchen that works by its own HACCP plan (or has to clarify it) keeps the +10% of the company's price table
   const rate = Math.max(BIZ.floor, BIZ.rate * (1 + Math.min(BIZ.maxSur, cfg.haccpQ && st.haccp !== 'no' ? .1 : 0)));
-  const min = bizMin(oneOff ? 0 : perWeek), raw = rate * hours, visits = oneOff ? 1 : perWeek * BIZ.weeks;
-  // every visit costs at least the minimum and the sum never shows less (review, Oct 2026: 13 visits × 65 € = 845 €, the
-  // range rounded it down to 840 €); above the minimum the range is rounded to 10 €
+  const min = bizMin(oneOff ? 0 : perWeek), visits = oneOff ? 1 : perWeek * BIZ.weeks, core = rate * (hours - over), extra = rate * over;
+  // a visit = the base work, never below the minimum, + the work on top of it; the sum never shows less than the minimum
+  // of every visit (review, Oct 2026: 13 visits × 65 € = 845 €, the range rounded it down to 840 €), above it — to 10 €
   const floor = Math.round(min * visits);
-  const range = BIZ_SOLO_RANGE.map((f) => Math.max(floor, Math.round(raw * f * visits / 10) * 10));
-  return { ...base, oneOff, perWeek, rate, hours, monthHours, min, minApplied: range[1] === floor, volume: !oneOff && monthHours >= BIZ.volumeHours,
+  const at = (f) => { const p = Math.max(min, core * f) + extra * f; return p <= min ? floor : Math.max(floor, Math.round(p * visits / 10) * 10); };
+  const range = BIZ_SOLO_RANGE.map(at);
+  return { ...base, oneOff, perWeek, rate, hours, monthHours, min, minApplied: core * BIZ_SOLO_RANGE[1] <= min, volume: !oneOff && monthHours >= BIZ.volumeHours,
     photo: !!(kt && kt.photo), glassPhoto: !!(cfg.glassPhoto && st.glass !== 'no'), range, main: range[0] };
 }
 const compute = () => P() ? computePriv() : computeBiz();
@@ -842,7 +848,7 @@ function windowsWizardBiz() {
       ${w.sides === 2 ? `<p class="wz-q">${tl(`Доступ до зовнішньої сторони`)}</p><div class="optcards">${WIN_BIZ.access.map(([id, t, x]) => `<button type="button" class="optcard" data-wopt="baccess" data-v="${id}" aria-pressed="${w.baccess === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>
         ${w.baccess === 'high' ? tl('<p class="bs-hint warn">Зовнішню сторону зі складним або висотним доступом оцінюємо окремо — у розрахунок входить миття зсередини.</p>') : ''}` : ''}
       <p class="wz-q">${tl(`Додатково`)} <span>${tl(`необовʼязково`)}</span></p>
-      ${checkrow('w:blinds', w.blinds > 0, tl('Жалюзі'), `${WIN_BIZ.blinds} ${tl(`€ netto за вікно`)}`, '')}
+      ${checkrow('w:blinds', w.blinds > 0, tl('Жалюзі'), tl('від {0} за стандартне вікно, великі й складні — за фото', `${WIN_BIZ.blinds} €${country() === 'sk' ? '' : ' netto'}`), '')}
       ${w.blinds > 0 ? `<div class="subrow">${tl(`На скількох вікнах?`)} ${stepper('w:blinds', w.blinds, Math.max(cnt, 1), 1)}</div>` : ''}`;
   } else {
     body = `<p class="wz-q">${tl(`Як часто потрібне миття?`)}</p><div class="freqs">${WIN_BIZ.regular.map(([id, t]) => `<button type="button" class="chip" data-wopt="regular" data-v="${id}" aria-pressed="${w.regular === id}">${t}</button>`).join('')}</div>
@@ -1142,8 +1148,9 @@ function bizSoloOut(c) {
   // the list of what is included all at once — now the sum and two short lines; the details open on demand.
   // At the minimum the zones cannot move the sum — said right there, or a zone taken off looks broken (owner, Oct 2026:
   // «убрал кухню, но цена не меняется»)
+  const minWhy = LITE ? '' : cfg.minNote || (cfg.zoneQ || cfg.adds ? tl('Обсяг робіт вкладається в неї, тому вибір зон суму не змінює.') : '');
   const fine = c.minApplied
-    ? `${tl(`Для {0} м² діє мінімальна вартість візиту — {1} netto.`, state.bs.area, nb(eur(c.min)))}${!LITE && (cfg.zoneQ || cfg.adds) ? ` ${tl('Обсяг робіт вкладається в неї, тому вибір зон суму не змінює.')}` : ''}`
+    ? `${tl(`Для {0} м² діє мінімальна вартість візиту — {1} netto.`, state.bs.area, nb(eur(c.min)))}${minWhy ? ` ${minWhy}` : ''}`
     : [c.volume ? tl('Для такого обсягу підготуємо індивідуальну ставку.') : tl('Точну вартість визначимо після уточнення обсягу робіт.'), `${tl(`Мінімальна вартість одного візиту — {0} netto.`, nb(eur(c.min)))}`].join(' ');
   const notes = [c.photo ? cfg.photoNote : '', c.glassPhoto ? tl('Миття вітрин у суму не входить — вартість уточнимо після фото або огляду обʼєкта.') : ''].filter(Boolean);
   const photo = notes.map((x) => `<div class="approx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span><b>${x}</b></span></div>`).join('');
@@ -1217,8 +1224,9 @@ function bizOutB() {
     const w = state.win, reg = lc(WIN_BIZ.regular.find(([k]) => k === w.regular)[1]);
     const wa = `<a class="cta-alt" href="${waHref(`${tl(`Добрий день! Потрібне миття вікон для бізнесу ({0}). Надсилаю фото.`, CITIES[state.city].name)}`)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото у WhatsApp`)}</a>`;
     return `<div class="price-box"><div class="p-label">${tl(`Орієнтовно за одне миття`)}${w.regular === 'once' ? '' : ` · ${reg}`}</div><div class="p-row"><div class="p-value num">${rangeTxt(c.range)}</div></div>
-      <div class="p-sub">${tax} ${tl(`· {0} € / год · мінімальне замовлення`, dec(c.rate))} ${eur(c.min)}</div>
-      ${c.hard ? tl('<p class="bs-hint warn">Зовнішню сторону зі складним або висотним доступом оцінюємо окремо — у суму входить миття зсередини.</p>') : ''}
+      <div class="p-sub">${tax} ${tl(`· {0} € за годину роботи клінера · мінімальне замовлення`, dec(c.rate))} ${eur(c.min)}</div>
+      ${c.hard ? tl('<p class="bs-hint warn">Зовнішню сторону зі складним або висотним доступом оцінюємо окремо — у суму входить миття зсередини.</p>')
+        : w.sides === 2 && (w.facade || w.bshow || w.bpano) ? tl('<p class="bs-hint warn">Для вітрин і фасадів ціна попередня: висота, доступ ззовні та перешкоди можуть змінити час — підтвердимо після фото або огляду.</p>') : ''}
       ${winBreakdownHTML(c.rate, c.min)}${note}</div>${foot(tl('Отримати пропозицію'), wa)}`;
   }
   const v = Math.round(c.oneOff ? c.perVisit : c.month);
@@ -1262,14 +1270,17 @@ function bizInputs() {
 function bizOut() {
   const c = computeBiz(), b = state.biz, sk = c.ctry === 'sk', nt = sk ? tl('ми не є платниками ПДВ') : tl('без ПДВ');
   const withVat = (n, fmt = eur) => sk ? '' : `${tl(`з ПДВ {0}:`, CTRY[c.ctry].pct)} ${fmt(n * (1 + c.vat))}`;
-  const foot = (label) => `<button class="cta" type="button" data-open="book" id="ctaMain">${label}</button><div class="cta-note"><span>${tl(`Пропозиція протягом 24 годин · договір і документи`)}</span><span class="live"><i class="dot"></i><span class="lt"></span></span></div>`;
+  const foot = (label, extra = '') => `<button class="cta" type="button" data-open="book" id="ctaMain">${label}</button>${extra}<div class="cta-note"><span>${tl(`Пропозиція протягом 24 годин · договір і документи`)}</span><span class="live"><i class="dot"></i><span class="lt"></span></span></div>`;
   const pills = (list, head = tl('Уже в ціні')) => `<div class="incrow"><div class="head"><b>${head}</b></div><div class="pills">${list.map((t) => `<span class="pill"><i>✓</i>${t}</span>`).join('')}</div></div>`;
   if (c.request === 'hotel') return `<div class="price-box"><div class="p-label">${tl(`Готель — індивідуальна пропозиція`)}</div><div class="p-value" style="font-size:28px">${tl(`за 24 години`)}</div><div class="p-vat"><span>${tl(`за кількістю номерів, типом прибирання та графіком`)}</span></div>${pills([tl('Чек-лист для номерів'), tl('Заміна білизни'), tl('Фото-контроль')])}</div>${foot(tl('Отримати пропозицію'))}`;
   if (c.request === 'other') return `<div class="price-box"><div class="p-label">${tl(`Індивідуальна пропозиція`)}</div><div class="p-value" style="font-size:28px">${tl(`за 24 години`)}</div><div class="p-vat"><span>${tl(`після опису або огляду обʼєкта`)}</span></div>${pills([tl('Огляд обʼєкта'), tl('Розрахунок і документи'), tl('Участь у тендерах')], tl('Як ми працюємо'))}</div>${foot(tl('Надіслати запит'))}`;
   if (c.request === 'big') return `<div class="notice"><b>${tl(`Великий обʼєкт · ~{0} год на місяць`, Math.round(c.monthHours))}</b>${tl(`Для обʼєктів від {0} годин на місяць готуємо індивідуальну пропозицію після огляду обʼєкта.`, BIZ.bigHours)}</div>${foot(tl('Запросити огляд обʼєкта'))}`;
   if (c.request === 'sk-hourly') return `<div class="notice"><b>${tl(`Відповімо протягом 30 хвилин у робочий час`)}</b>${tl(`Опишіть обʼєкт і графік — менеджер надішле ставку та пропозицію.`)}</div>${foot(tl('Залишити запит'))}`;
   if (c.request === 'apt-big') return `<div class="notice"><b>${tl(`Апартаменти понад 190 м²`)}</b>${tl(`Розрахуємо індивідуально — залиште запит.`)}</div>${foot(tl('Залишити запит'))}`;
-  if (c.winEmpty) return `<div class="notice"><b>${tl(`Вкажіть вікна`)}</b>${tl(`Порахуємо орієнтовну вартість миття ({0} € / год, {1}).`, dec(sk ? 21.5 : BIZ.windowHour), nt)}</div>${foot(tl('Залишити запит'))}`;
+  if (c.winEmpty) { // review, Oct 2026: a business client often does not know the sizes — photos are the second way in
+    const photo = `<a class="cta-alt" href="${waHref(tl('Добрий день! Потрібне миття вікон для бізнесу ({0}). Точних розмірів не знаю — надсилаю фото.', CITIES[state.city].name))}" target="_blank" rel="noopener">${SOC.wa}${tl('Не знаєте розміри? Надішліть фото — допоможемо з розрахунком')}</a>`;
+    return `<div class="notice"><b>${tl(`Вкажіть вікна`)}</b>${tl(`Порахуємо орієнтовну вартість: {0} за годину роботи одного клінера, мінімальна вартість окремого замовлення — {1}.`, `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, `${eur(sk ? 70 : BIZ.minOneOff)}${sk ? '' : ' netto'}`)}</div>${foot(tl('Залишити запит'), photo)}`;
+  }
   let label, main, meta = '', flags = [], inc;
   if (c.apt) {
     label = `${tl(`За одне прибирання ·`)} ${nt}`;
@@ -1703,7 +1714,7 @@ function inclSec(s) {
     body = pricesHTML();
   } else if (s.incl === 'bizPrices') {
     const sk = country() === 'sk', rates = BIZ_RATES[sk ? 'sk' : 'at'];
-    const val = (k, unit) => (!k ? tl('за оглядом') : rates[k] == null ? tl('за запитом') : `${k === 'rate' ? `${tl(`від`)} ` : ''}${money(dec(rates[k]))} ${tl(unit)}`);
+    const val = (k, unit) => (!k ? tl('за оглядом') : rates[k] == null ? tl('за запитом') : `${k === 'rate' || k === 'blinds' ? `${tl(`від`)} ` : ''}${money(dec(rates[k]))} ${tl(unit)}`);
     body = `<div class="prices"><div class="pcard"><h3>${ic('receipt')}${sk ? tl('Ставки') : tl('Ставки без ПДВ')}</h3>${BIZ_PRICES.map(([n, k, unit]) => `<div class="pline"><span>${n}</span><b>${val(k, unit)}</b></div>`).join('')}${sk ? `<p class="pc-note">${tl('У Словаччині ми не є платниками ПДВ.')}</p>` : ''}</div>${inclGroups(INCL.bizRegular.slice(0, 1))}</div>`;
   } else {
     body = inclGroups(INCL[s.incl] || []);
@@ -2194,13 +2205,17 @@ function pageService() {
     if (SVC_ID === 'extras') facts.push([tl('Мінімальне замовлення'), eur(R().minVisit)], [tl('Оплата'), tl('після прибирання')]);
   } else {
     const sk = country() === 'sk';
-    facts = SVC_ID === 'windows' ? [[sk ? tl('Ставка') : tl('Ставка netto'), `${tl(`від {0} € / год`, dec(sk ? 21.5 : BIZ.windowHour))}`], [tl('Мінімальне замовлення'), eur(sk ? 70 : BIZ.minOneOff)], [tl('Пропозиція'), tl('за 24 години')]] // one price everywhere on the page
-      : SVC_ID === 'reno' ? [[tl('Вартість'), tl('після фото або огляду')], [tl('Пропозиція'), tl('за 24 години')]] // two facts: the three do not fit in one line
+    // windows: the rate is a cleaner's hour (review: «одного сотрудника или всей команды?»), one price everywhere on the page
+    facts = SVC_ID === 'windows' ? [[tl('Година роботи клінера'), `${tl(`від {0} €`, dec(sk ? 21.5 : BIZ.windowHour))}${sk ? '' : ' netto'}`], [tl('Мінімальне замовлення'), `${eur(sk ? 70 : BIZ.minOneOff)}${sk ? '' : ' netto'}`], [tl('Пропозиція'), tl('за 24 години')]]
+      // after renovation: an estimate first, the final price after the scope is clear — no promise of an offer in 24 hours
+      : SVC_ID === 'reno' ? [[tl('Попередня оцінка'), tl('після фото')], [tl('Фінальна вартість'), tl('після уточнення обсягу')]] // two facts: the three do not fit in one line
       : SVC_ID === 'airbnb' ? aptFacts(sk)
       : [SVC_ID === 'moveout' ? [tl('Ціна'), tl('після огляду')] : country() === 'sk' ? [tl('Ставка'), tl('за запитом')] : [tl('Ставка без ПДВ'), tl('від 27 € / год')], [tl('Пропозиція'), tl('за 24 години')], [tl('Документи'), tl('договір і інвойс')]];
   }
   const trust = trustFor(kind, SVC_ID);
   if (kind === 'business' && s.trust) trust[2] = [trust[2][0], s.trust];
+  // after renovation no offer is promised in 24 hours: a big object needs an inspection first (review, Oct 2026)
+  if (kind === 'business' && SVC_ID === 'reno') trust[1] = [trust[1][0], tl('Попередня оцінка — після фото й основних даних, фінальна вартість — після уточнення обсягу робіт')];
   const requestOnly = (kind === 'private' && SVC_ID === 'reno') || (kind === 'business' && ['moveout', 'reno'].includes(SVC_ID));
   const hero = heroHTML({ crumbs, h1: `${s.h1 || s.name} <span class="accent">${c.in}</span>`, sub: s.sub, lead: s.lead,
     facts, trust, side: requestOnly ? sideRequest() : null });
@@ -2211,8 +2226,8 @@ function pageService() {
     const info = (s.inclInfo || []).map(([icn, x]) => `<div class="incl-info reveal">${ic(icn)}<p>${bizFill(x)}</p></div>`).join('');
     const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
     return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
-      + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>`)
-      + aboutSec() + stepsSec(s.steps, tl('Як ми це робимо')) + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
+      + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>${s.uspNote ? `<div class="incl-info reveal">${ic('clock')}<p>${s.uspNote}</p></div>` : ''}`)
+      + aboutSec(null, s.advSwap ? { adv: ADV_BIZ.map((a, i) => (i === s.advSwap[0] ? s.advSwap[1] : a)) } : {}) + stepsSec(s.steps, tl('Як ми це робимо')) + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
       + `<section class="block" id="start"><div class="container"><div class="final-cta reveal"><div><h2>${s.final[0]}</h2><p>${s.final[1]}</p></div>
           <div class="fc-btns">${cal ? `<button type="button" class="fc-btn home" data-tocalc>${CALC_SVG}${s.final[2]}</button>` : `<button type="button" class="fc-btn home" data-open="book" data-bizgoal="${tl(`Комерційна пропозиція`)}">${s.final[2]}</button>`}<a class="fc-btn biz" href="${waHref(s.waText)}" target="_blank" rel="noopener">${SOC.wa}${tl(`Надіслати фото`)}</a></div></div></div></section>`
       + relatedSec(kind, s.related);
@@ -2247,7 +2262,11 @@ function pageService() {
 function promoBannerHTML() {
   const idx = P() ? (isRegType(SVC_ID) ? 0 : 1) : ({ airbnb: 1, klining: 0, basic: 0 }[SVC_ID] ?? 2);
   let p = PROMOS[state.mode][idx], btn = `<button type="button" class="pbtn" data-promo="${p.act}">${p.btn}</button>`;
-  if (!P() && PAGE === 'service' && SVC_ID === 'reno') p = { ...p, tag: tl('Оцінка та пропозиція за 24 години') }; // not a «quick start»: first the estimate
+  // after renovation: not a «quick start» and no offer promised in 24 hours — first the estimate, then the scope (review)
+  if (!P() && PAGE === 'service' && SVC_ID === 'reno') {
+    p = { ...p, pct: tl('за фото'), tag: tl('Попередня оцінка'), t: tl('Попередня оцінка за фото та основними даними'), d: tl('Надішліть тип обʼєкта, площу, бажану дату й фото — підготуємо попередню оцінку. Фінальну вартість погодимо після уточнення обсягу робіт, для великих обʼєктів — після огляду.') };
+    btn = `<button type="button" class="pbtn" data-open="book" data-bizgoal="${tl(`Комерційна пропозиція`)}">${tl('Надіслати обʼєкт на оцінку')}</button>`;
+  }
   // general and deep are one-off jobs: there the regular discount is an offer to keep the result with the basic package
   const up = ownTier() && TIER_PAGE[SVC_ID].upsell;
   if (up) { p = { ...PROMOS.private[0], tag: up[0], t: up[1], d: up[2] }; btn = `<a class="pbtn" href="${svcHref('basic', 'private')}?freq=weekly">${tl(`Розрахувати базове`)}</a>`; }
@@ -2332,7 +2351,7 @@ function objInclSec(o) {
 function bizVals() {
   const sk = country() === 'sk';
   return { vat: sk ? tl('У Словаччині ми не є платниками ПДВ.') : tl('Ціни для бізнесу вказані netto, без ПДВ.'), kitchens: objHref('kitchens'),
-    bwrate: `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, bwmin: eur(sk ? 70 : BIZ.minOneOff), bwblinds: `${money(WIN_BIZ.blinds)}${sk ? '' : ' netto'}`,
+    bwrate: `${dec(sk ? 21.5 : BIZ.windowHour)} €${sk ? '' : ' netto'}`, bwmin: `${eur(sk ? 70 : BIZ.minOneOff)}${sk ? '' : ' netto'}`, bwblinds: `${money(WIN_BIZ.blinds)}${sk ? '' : ' netto'}`,
     aptprice: `${tl(`Прибирання між гостями — від {0} €{1} за апартамент до 50 м².`, Math.floor(APT[sk ? 'sk' : 'at'][0]), sk ? '' : ' netto')}`,
     priceoffice: sk ? tl('У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком робіт.') : `${tl(`Орієнтовну місячну вартість одразу покаже калькулятор — за площею офісу та графіком; при регулярному обслуговуванні — від {0} € netto за годину роботи клінера.`, dec(BIZ.rate))}`,
     price: sk ? tl('У Братиславі ставку розраховуємо індивідуально — за площею, графіком і переліком зон.') : `${tl(`Регулярне обслуговування — від {0} € netto за годину роботи клінера. Орієнтовну місячну вартість одразу покаже калькулятор — за площею, графіком і зонами.`, dec(BIZ.rate))}` };
@@ -2646,23 +2665,28 @@ function renderModal(done = false) {
     // review, Oct 2026: a short form — name and a phone or an email; what the calculator counted is already in it, and the
     // same goes to WhatsApp as a ready message
     const goalSel = `<div class="fld"><label for="fGoal">${tl(`Мета звернення`)}</label><select id="fGoal">${[tl('Комерційна пропозиція'), tl('Огляд обʼєкта'), tl('Тендер — надішлю ТЗ')].map((g) => `<option ${g === bizGoal ? 'selected' : ''}>${g}</option>`).join('')}</select></div>`;
-    const goal = sum ? '' : goalSel;
+    // after renovation the goal is in the title (an estimate or an inspection) and a short brief comes first (review, Oct
+    // 2026: the kind and the area of the object, the state of the works, the wanted date; photos optional)
+    const reno = PAGE === 'service' && SVC_ID === 'reno';
+    const goal = sum || reno ? '' : goalSel;
+    const file = SOLO_OBJ ? tl('План приміщення або фото') : PAGE === 'service' && SVC_ID === 'windows' ? tl('Фото вікон, вітрин або фасаду') : reno ? tl('Фото або відео обʼєкта') : '';
+    const brief = reno ? `<div class="fld-2"><div class="fld"><label for="fType">${tl('Тип обʼєкта')}</label><select id="fType">${[tl('Офіс'), tl('Магазин'), tl('Ресторан або кафе'), tl('Склад'), tl('Інший обʼєкт')].map((o) => `<option>${o}</option>`).join('')}</select></div><div class="fld"><label for="fArea">${tl('Площа, м²')}</label><input id="fArea" type="number" inputmode="numeric" min="1" /></div></div>
+        <div class="fld-2"><div class="fld"><label for="fState">${tl('Стан ремонту')}</label><select id="fState"><option>${tl('Ремонт завершено')}</option><option>${tl('Ремонт ще триває')}</option></select></div><div class="fld"><label for="fDate">${tl('Бажана дата прибирання')}</label><input id="fDate" type="date" /></div></div>` : '';
     $('#modal').innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:start;gap:12px"><h3 id="mTitle">${sum ? tl('Отримати пропозицію') : tl('Запит для бізнесу')}</h3>${x}</div>
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:12px"><h3 id="mTitle">${sum ? tl('Отримати пропозицію') : reno ? (bizGoal === tl('Огляд обʼєкта') ? tl('Запросити огляд обʼєкта') : tl('Надіслати обʼєкт на оцінку')) : tl('Запит для бізнесу')}</h3>${x}</div>
       ${sum}
       <form id="bookForm">
-        ${goal}
+        ${goal}${brief}
         <div class="fld-2"><div class="fld"><label for="fName">${tl(`Імʼя`)}</label><input id="fName" required placeholder="${tl(`Контактна особа`)}" autocomplete="name" /></div><div class="fld"><label for="fPhone">${tl(`Телефон або email`)}</label><input id="fPhone" required placeholder="${tl(`+43 … або name@company.com`)}" autocomplete="tel" /></div></div>
-        ${PAGE === 'service' && SVC_ID === 'reno' ? tl('<div class="fld"><label for="fReady">Коли обʼєкт має бути готовий до відкриття / передачі?</label><input id="fReady" type="date" /></div>') : ''}
-        <details class="opt-f"><summary>${SOLO_OBJ ? tl('Компанія, адреса, план і коментар') : tl('Компанія, адреса й коментар')} <span>${tl(`необовʼязково`)}</span></summary>
-          ${sum ? goalSel : ''}
-          ${SOLO_OBJ ? `<div class="fld"><label for="fPlan">${tl('План приміщення або фото')}</label><input id="fPlan" type="file" accept="image/*,.pdf" multiple /></div>` : ''}
+        <details class="opt-f"><summary>${SOLO_OBJ ? tl('Компанія, адреса, план і коментар') : file ? tl('Фото, компанія, адреса й коментар') : tl('Компанія, адреса й коментар')} <span>${tl(`необовʼязково`)}</span></summary>
+          ${sum || reno ? goalSel : ''}
+          ${file ? `<div class="fld"><label for="fPlan">${file}</label><input id="fPlan" type="file" accept="image/*,video/*,.pdf" multiple /></div>` : ''}
           <div class="fld"><label for="fCo">${tl(`Компанія`)}</label><input id="fCo" placeholder="${tl(`Назва компанії`)}" autocomplete="organization" /></div>
           <div class="fld"><label for="fAddr">${tl(`Адреса обʼєкта`)}</label><input id="fAddr" placeholder="${CITIES[state.city].name}${tl(`, вулиця, будинок`)}" /></div>
           <div class="fld"><label for="fMsg">${tl(`Коментар`)}</label><textarea id="fMsg" placeholder="${sum ? tl('Особливі вимоги, зручний час') : tl('Тип і площа обʼєкта, графік, особливі вимоги')}"></textarea></div>
         </details>
-        <button class="cta" type="submit">${tl(`Надіслати запит`)}</button>${sum ? `<a class="cta-alt" href="${waHref(bizWaText(c))}" target="_blank" rel="noopener">${SOC.wa}${tl(`або написати у WhatsApp — з цими даними`)}</a>` : ''}
-        <div class="cta-note">${tl(`Пропозиція протягом 24 годин · договір і документи для бухгалтерії`)}</div>
+        <button class="cta" type="submit">${tl(`Надіслати запит`)}</button>${sum ? `<a class="cta-alt" href="${waHref(bizWaText(c))}" target="_blank" rel="noopener">${SOC.wa}${tl(`або написати у WhatsApp — з цими даними`)}</a>` : reno ? `<a class="cta-alt" href="${waHref(PAGE_SVC.waText)}" target="_blank" rel="noopener">${SOC.wa}${tl(`або надіслати фото у WhatsApp`)}</a>` : ''}
+        <div class="cta-note">${reno ? tl('Попередня оцінка — після фото й основних даних · договір і документи для бухгалтерії') : tl(`Пропозиція протягом 24 годин · договір і документи для бухгалтерії`)}</div>
       </form>`;
   }
 }
