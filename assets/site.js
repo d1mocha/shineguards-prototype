@@ -1615,10 +1615,10 @@ function teamGalleryHTML() {
   return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} /><figcaption class="tg-cap">${sl.cap}</figcaption></figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="${tl(`Попереднє фото`)}">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="${tl(`Наступне фото`)}">›</button></div></div>`;
 }
-const logoMarquee = () => `<div class="container"><div class="logo-row">${LOGOS.map((l) => `<span class="logo-tile"><img loading="lazy" alt="${l.alt}" src="${l.src}" /></span>`).join('')}</div></div>`;
+const logoMarquee = () => `<div class="container"><div class="logo-row">${LOGOS.map((l) => `<span class="logo-tile${l.pad ? ' pad' : ''}"><img loading="lazy" alt="${l.alt}" src="${l.src}" /></span>`).join('')}</div></div>`;
 function logosSec(title = tl('Компанії, які обрали нас для постійної співпраці')) {
-  const own = PAGE !== 'object' || ['hotels', 'gyms', 'offices'].includes(SVC_ID); // the kinds of objects these clients are
-  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${title}</h2><p class="sec-sub">${own ? tl(`Готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.`) : tl(`Наш досвід у комерційному прибиранні: готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
+  const own = PAGE !== 'object' || ['hotels', 'gyms', 'offices', 'shops'].includes(SVC_ID); // the kinds of objects these clients are
+  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${title}</h2><p class="sec-sub">${own ? tl(`Готелі, фітнес-клуби, магазини, офіси та керуючі компанії апартаментів.`) : tl(`Наш досвід у комерційному прибиранні: готелі, фітнес-клуби, магазини, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
     ${logoMarquee()}</section>`;
 }
 const proofSec = () => P() ? reviewsSec() : logosSec();
@@ -1642,7 +1642,7 @@ function moreServicesSec() {
 const homePromos = () => promosSec([PROMOS.private[1], PROMOS.private[2]], tl('Акції та спеціальні пропозиції'), true);
 // B2B: client logos right after the first screen, with how typical objects are served
 function bizTrustSec() {
-  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${tl(`Нам довіряють бізнеси`)} ${CITIES[state.city].in}</h2><p class="sec-sub">${tl(`Готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
+  return `<section class="block" id="logos"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${tl(`Нам довіряють бізнеси`)} ${CITIES[state.city].in}</h2><p class="sec-sub">${tl(`Готелі, фітнес-клуби, магазини, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
     ${logoMarquee()}
     <div class="container"><div class="cases">${BIZ_CASES.map(([icn, t, f, d], i) => `<div class="case pop" style="--i:${i}">${ic(icn)}<div><b>${t}</b><span class="case-f">${f}</span><p>${d}</p></div></div>`).join('')}</div></div></section>`;
 }
@@ -2228,6 +2228,7 @@ function pageService() {
     const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
     return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
       + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>${s.uspNote ? `<div class="incl-info reveal">${ic('clock')}<p>${s.uspNote}</p></div>` : ''}`)
+      + (s.caseKey ? caseSec(s.caseKey) : '') // a real case of this service told on another page (Lululemon: after the renovation → every day)
       + aboutSec(null, s.advSwap ? { adv: ADV_BIZ.map((a, i) => (i === s.advSwap[0] ? s.advSwap[1] : a)) } : {}) + stepsSec(s.steps, tl('Як ми це робимо')) + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
       + `<section class="block" id="start"><div class="container"><div class="final-cta reveal"><div><h2>${s.final[0]}</h2><p>${s.final[1]}</p></div>
           <div class="fc-btns">${cal ? `<button type="button" class="fc-btn home" data-tocalc>${CALC_SVG}${s.final[2]}</button>` : `<button type="button" class="fc-btn home" data-open="book" data-bizgoal="${tl(`Комерційна пропозиція`)}">${s.final[2]}</button>`}<a class="fc-btn biz" href="${waHref(s.waText)}" target="_blank" rel="noopener">${SOC.wa}${tl(`Надіслати фото`)}</a></div></div></div></section>`
@@ -2339,7 +2340,9 @@ function caseHTML(c) {
       ${c.note ? `<div class="cs-note"><h4>${tl(`Особливості обʼєкта`)}</h4><p>${c.note}</p></div>` : ''}${res}${quote}${btn}
     </div></article>`;
 }
+let CASE_KEY = null; // the CASES key the page shows: its own object, or another page's case (business post-renovation → shops)
 function caseSec(id) {
+  CASE_KEY = id;
   const list = casesFor(id); if (!list.length) return '';
   const i = Math.min(state.caseIdx, list.length - 1);
   // several cases of one object type: chips with the clients' names switch the card
@@ -2453,7 +2456,7 @@ function audienceSec() {
 }
 // companies → real people → Google 4,9 in one block
 function socialProofSec() {
-  return `<section class="block" id="proof"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${tl(`Нам довіряють`)}</h2><p class="sec-sub">${tl(`Готелі, фітнес-клуби, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
+  return `<section class="block" id="proof"><div class="container"><div class="sec-head reveal"><div><h2 class="sec-title">${tl(`Нам довіряють`)}</h2><p class="sec-sub">${tl(`Готелі, фітнес-клуби, магазини, офіси та керуючі компанії апартаментів.`)}</p></div></div></div>
     ${logoMarquee()}
     <div class="container sec-head reveal proof-rev"><div><h3 class="sub-title">${tl(`Що говорять наші клієнти`)}</h3><p class="sec-sub">${tl(`Останні відгуки з Google · перекладено українською.`)}</p></div>${gScore()}</div>
     ${revWheelHTML()}</section>`;
@@ -2939,11 +2942,11 @@ document.addEventListener('click', (e) => {
     return openDrawer(g);
   }
   if (d.cstage != null) { // a stage of the case's story
-    const list = casesFor(SVC_ID); state.caseStage = +d.cstage;
+    const list = casesFor(CASE_KEY || SVC_ID); state.caseStage = +d.cstage;
     $('#caseBody').innerHTML = caseHTML(list[Math.min(state.caseIdx, list.length - 1)]); return;
   }
   if (d.case != null) { // another client's case of the same object type
-    const list = casesFor(SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1); state.caseStage = 0;
+    const list = casesFor(CASE_KEY || SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1); state.caseStage = 0;
     $('#caseBody').innerHTML = caseHTML(list[state.caseIdx]); $$('.cs-tabs .chip').forEach((x, k) => x.setAttribute('aria-pressed', k === state.caseIdx)); return;
   }
   if (d.cklist) { openChecklist(d.cklist); return; }

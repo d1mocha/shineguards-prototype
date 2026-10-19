@@ -527,7 +527,7 @@ const SVCS = {
       short: 'Після ремонту, реконструкції або облаштування — до дати відкриття.',
       lead: 'Готуємо офіси, магазини, ресторани та інші бізнес-обʼєкти до відкриття, передачі або початку роботи. Видаляємо будівельний пил, очищуємо підлогу, скло, санвузли та доступні поверхні від залишкових забруднень. Формуємо команду й графік відповідно до площі, стану обʼєкта та ваших термінів.',
       trust: 'Команду формуємо під площу та дедлайн обʼєкта',
-      calc: { obj: 'other' }, steps: 'renoBiz', related: ['windows', 'klining', 'basic', 'moveout'],
+      calc: { obj: 'other' }, steps: 'renoBiz', related: ['windows', 'klining', 'basic', 'moveout'], caseKey: 'shops',
       // the request card: the deadline matters more than a «schedule» for a one-off job
       // a big object needs an inspection: the estimate comes first, the final price after the scope is clear (review)
       side: { steps: [['Опишіть обʼєкт', 'тип обʼєкта, площа, стан ремонту, бажана дата прибирання'], ['Огляд або фото', 'менеджер приїде чи оцінить за фото'], ['Оцінка та пропозиція', 'попередня — після фото й основних даних, фінальна — після уточнення обсягу робіт']],
@@ -876,6 +876,7 @@ const LOGOS = [
   { alt: 'Mulackal', src: 'https://res.cloudinary.com/dbiy7qyfe/image/upload/w_460,f_auto,q_auto/v1780686429/image_3_c6bdbbc744.png' },
   { alt: 'dwell·bell', src: 'https://res.cloudinary.com/dbiy7qyfe/image/upload/w_460,f_auto,q_auto/v1780686406/image_1_697e55346a.png' },
   { alt: 'X-Treme Pilates', src: 'https://res.cloudinary.com/dbiy7qyfe/image/upload/w_460,f_auto,q_auto/v1780686448/IMG_1985_2d6882b280.jpg' },
+  { alt: 'Lululemon', src: 'https://upload.wikimedia.org/wikipedia/commons/2/22/Lululemon_Athletica_logo.svg', pad: 1 }, // owner, 2026-10-19
 ];
 // Object icons from shineguards.com, inlined with a heavier stroke so they stay legible at 28–44 px
 const OBJ_SVG = {
@@ -1272,6 +1273,7 @@ const CASES = {
     ],
     work: ['Обидва поверхи: пил з полиць, меблів, каси й кулера', 'Примірочні та дзеркала — без розводів', 'Підлога — підмітаємо й миємо', 'Санвузол: сантехніка, дзеркало, розхідники', 'Кабінет менеджера', 'Вікна — раз на місяць', 'Засоби та інвентар — наші, щоранку фотозвіт'],
     result: 'Магазин відкрився вчасно, 3 вересня, і клієнт залишив за нами щоденне прибирання — шість ранків на тиждень.',
+    quote: ['Дякуємо за вашу допомогу під час відкриття — раді нашій співпраці.', 'Менеджер проєкту відкриття магазину · з листа, перекладено з англійської'],
     video: 'https://www.instagram.com/reel/DdETqRcgkAj/',
   }],
 };
