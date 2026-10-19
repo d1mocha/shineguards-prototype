@@ -699,7 +699,7 @@ window.SG_I18N = {
 "Надішліть 5–10 фото або коротке відео — менеджер зорієнтує по вартості.": "Send 5–10 photos or a short video — the manager will give you an idea of the cost.",
 "Надіслати фото у WhatsApp": "Send photos via WhatsApp",
 "або залишити заявку — передзвонимо": "or send a request — we will call you back",
-"Ваш надійний клінінговий сервіс": "Your reliable cleaning service",
+"Ваш надійний клінінговий сервіс": "Your trusted cleaning service",
 "Прибирання квартир і будинків": "Cleaning of flats and houses",
 "Оберіть тип прибирання та площу — і одразу побачите фіксовану ціну. Разово або регулярно, без очікування дзвінка менеджера.": "Choose the type of cleaning and the area — and see a fixed price right away. One-off or regular, without waiting for a manager's call.",
 "Професійне прибирання для бізнесу": "Professional cleaning for business",
