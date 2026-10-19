@@ -2318,25 +2318,27 @@ function beforeAfterHTML(before, after) {
       <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="${tl(`Порівняти фото до і після прибирання`)}" /></div>`;
 }
 // a case told in stages (after the renovation → before the opening → every day) with a gallery of the finished object
-// (owner, 2026-10-19: «просто красивые фото после уборки»): the photos swipe, each says its stage; the stage chips tell what
-// was done then and bring the gallery to that stage's photos
+// (owner, 2026-10-20: «чтобы было понятно, что это магазин одежды, красивые фото»): a big photo that names the zone it
+// shows, arrows, the count, and every photo in a row under it — the whole set at a glance, any photo one tap away; the
+// stage chips tell the story as text
 const PLAY_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M10 8.5v7l6-3.5z"/></svg>';
 const caseStageT = (s) => `<b>${s.when}</b>${s.text}`;
-// a stage of the story: the chip at once; the text when the photos stand still — a layout change while they glide makes
-// the browser snap the gallery back to the photo it left (scroll-snap keeps its last target)
-function caseStageGo(k, scroll) {
+function caseStageGo(k) {
   const list = casesFor(CASE_KEY || SVC_ID), c = list[Math.min(state.caseIdx, list.length - 1)]; if (!c || !c.stages) return;
-  $$('[data-cstage]').forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.cstage === k)));
-  const tr = scroll && $('#caseBody .tg-track'), f = tr && tr.querySelector(`[data-st="${k}"]`), to = f ? f.offsetLeft - tr.offsetLeft : null;
-  if (to != null && Math.abs(tr.scrollLeft - to) > 2) { tr.scrollTo({ left: to, behavior: 'smooth' }); return; } // wireGal ends it
   state.caseStage = k;
+  $$('[data-cstage]').forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.cstage === k)));
   const t = $('#caseStage'); if (t) t.innerHTML = caseStageT(c.stages[k]);
 }
+function caseGalleryHTML(g) {
+  const pic = ([file, alt, , pos], lazy) => `<img ${lazy ? 'loading="lazy" ' : ''}alt="${alt}" src="${teamSrc({ file })}" style="object-position:${pos || '50% 50%'}" />`;
+  return `<div class="cs-gal" data-gal><div class="cs-view"><div class="tg-track">${g.map((x, k) => `<figure class="tg-s photo">${pic(x, k > 0)}${x[2] ? `<figcaption class="tg-cap">${x[2]}</figcaption>` : ''}</figure>`).join('')}</div>
+      <button type="button" class="cs-arr l" data-galnav="-1" aria-label="${tl(`Попереднє фото`)}">‹</button><button type="button" class="cs-arr r" data-galnav="1" aria-label="${tl(`Наступне фото`)}">›</button>
+      <span class="cs-count" aria-hidden="true"><b>1</b> / ${g.length}</span></div>
+    <div class="cs-thumbs">${g.map((x, k) => `<button type="button" data-cthumb="${k}" aria-current="${k === 0}" aria-label="${x[2] || x[1]}">${pic([x[0], '', '', x[3]], true)}</button>`).join('')}</div></div>`;
+}
 function caseStagesHTML(c) {
-  const i = Math.min(state.caseStage, c.stages.length - 1), g = c.gallery || [];
-  const gal = g.length ? `<div class="tg cs-gal" data-gal><div class="tg-track">${g.map(([file, alt, st, pos], k) => `<figure class="tg-s photo" data-st="${st}"><img ${k ? 'loading="lazy"' : ''} alt="${alt}" src="${teamSrc({ file })}" style="object-position:${pos || '50% 50%'}" /><figcaption class="tg-cap">${st + 1} · ${c.stages[st].t}</figcaption></figure>`).join('')}</div>
-      <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="${tl(`Попереднє фото`)}">‹</button><span class="tg-dots">${g.map((_, k) => `<i class="${k ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="${tl(`Наступне фото`)}">›</button></div></div>` : '';
-  return `<div class="cs-media">${gal}<div class="cs-stages">${c.stages.map((x, k) => `<button type="button" class="chip" data-cstage="${k}" aria-pressed="${k === i}">${k + 1} · ${x.t}</button>`).join('')}</div>
+  const i = Math.min(state.caseStage, c.stages.length - 1);
+  return `<div class="cs-media">${c.gallery ? caseGalleryHTML(c.gallery) : ''}<div class="cs-stages">${c.stages.map((x, k) => `<button type="button" class="chip" data-cstage="${k}" aria-pressed="${k === i}">${k + 1} · ${x.t}</button>`).join('')}</div>
     <p class="cs-stage-t" id="caseStage">${caseStageT(c.stages[i])}</p>${c.video ? `<a class="cs-video" href="${c.video}" target="_blank" rel="noopener">${PLAY_SVG}${tl('Відео з цього проєкту в Instagram')}</a>` : ''}</div>`;
 }
 function caseHTML(c) {
@@ -2581,15 +2583,15 @@ function revGo(i, instant) {
   tr.scrollTo({ left: el.offsetLeft + el.offsetWidth / 2 - tr.clientWidth / 2, behavior: instant ? 'auto' : 'smooth' });
 }
 function wireGal(g) {
-  const tr = g.querySelector('.tg-track'), dots = [...g.querySelectorAll('.tg-dots i')];
-  let rest = 0;
+  const tr = g.querySelector('.tg-track'), dots = [...g.querySelectorAll('.tg-dots i')], th = [...g.querySelectorAll('[data-cthumb]')], cnt = g.querySelector('.cs-count b');
+  let cur = 0;
   tr.addEventListener('scroll', () => {
     const i = Math.round(tr.scrollLeft / tr.clientWidth); dots.forEach((dt, k) => dt.classList.toggle('on', k === i));
-    if (!tr.children[0] || tr.children[0].dataset.st == null) return;
-    // a case gallery: once the photos stand still, the photo's stage leads the story under it
-    clearTimeout(rest);
-    rest = setTimeout(() => { const f = tr.children[Math.round(tr.scrollLeft / tr.clientWidth)], st = f && +f.dataset.st;
-      if (f && (st !== state.caseStage || $$('[data-cstage][aria-pressed="true"]').some((x) => +x.dataset.cstage !== st))) caseStageGo(st, false); }, 180);
+    if (!th.length || i === cur || !th[i]) return;
+    // a case gallery: the row of photos marks the one in view and keeps it visible (a phone shows a part of the row)
+    cur = i; th.forEach((t, k) => t.setAttribute('aria-current', String(k === i))); if (cnt) cnt.textContent = i + 1;
+    const row = th[i].parentElement, t = th[i];
+    if (t.offsetLeft < row.scrollLeft || t.offsetLeft + t.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left: t.offsetLeft - (row.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' });
   }, { passive: true });
 }
 function wireDynamic() {
@@ -2973,7 +2975,8 @@ document.addEventListener('click', (e) => {
     if (state.type !== k) setType(k); state.touched = true;
     return openDrawer(g);
   }
-  if (d.cstage != null) { caseStageGo(+d.cstage, true); return; } // a stage of the case's story
+  if (d.cstage != null) { caseStageGo(+d.cstage); return; } // a stage of the case's story
+  if (d.cthumb != null) { const tr = b.closest('[data-gal]').querySelector('.tg-track'); tr.scrollTo({ left: +d.cthumb * tr.clientWidth, behavior: 'smooth' }); return; }
   if (d.case != null) { // another client's case of the same object type
     const list = casesFor(CASE_KEY || SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1); state.caseStage = 0;
     $('#caseBody').innerHTML = caseHTML(list[state.caseIdx]); $$('#caseBody [data-gal]').forEach(wireGal); $$('.cs-tabs .chip').forEach((x, k) => x.setAttribute('aria-pressed', k === state.caseIdx)); return;

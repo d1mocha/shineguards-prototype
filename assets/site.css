@@ -1618,9 +1618,25 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 .cs > .cs-head { grid-area: head; }
 .cs > .cs-body { grid-area: body; }
 @media (max-width: 980px) { .cs:not(.text) { grid-template-areas: "head" "media" "body"; grid-template-rows: auto; row-gap: 18px; } }
-.cs-gal { margin-bottom: 20px; }
-.cs-gal .tg-track { aspect-ratio: 4 / 5; border-radius: 22px; }
+/* the gallery of the finished object: a big photo that names its zone, arrows, the count, every photo in a row under it */
+.cs-gal { min-width: 0; }
+.cs-view { position: relative; }
+.cs-gal .tg-track { aspect-ratio: 4 / 5; border-radius: 22px; background: #DCE6F0; }
 .cs-gal .tg-s.photo .tg-cap { left: 14px; top: 14px; padding: 6px 12px; font-size: 13.5px; }
+.cs-arr { position: absolute; top: 50%; width: 42px; height: 42px; margin-top: -21px; display: grid; place-items: center; padding: 0 0 3px; border: 0; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--blue); font: 400 28px/1 Inter, sans-serif; box-shadow: 0 10px 22px -12px rgba(2,16,36,.55); cursor: pointer; transition: transform .15s; }
+.cs-arr:hover { transform: scale(1.06); }
+.cs-arr.l { left: 12px; }
+.cs-arr.r { right: 12px; }
+.cs-count { position: absolute; right: 14px; top: 14px; padding: 6px 11px; border-radius: 999px; background: rgba(2,16,36,.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #fff; font: 700 13px Inter, sans-serif; font-variant-numeric: tabular-nums; }
+.cs-thumbs { position: relative; display: flex; gap: 6px; margin-top: 10px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+.cs-thumbs::-webkit-scrollbar { display: none; }
+.cs-thumbs button { flex: 1 0 52px; max-width: 80px; aspect-ratio: 4 / 5; padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: #DCE6F0; opacity: .72; cursor: pointer; transition: opacity .15s, border-color .15s; }
+.cs-thumbs button:hover { opacity: 1; }
+.cs-thumbs button[aria-current="true"] { border-color: var(--blue); opacity: 1; }
+.cs-thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 560px) { .cs-arr { width: 38px; height: 38px; margin-top: -19px; font-size: 24px; } .cs-arr.l { left: 8px; } .cs-arr.r { right: 8px; } }
+/* one column on a tablet: the portrait photo would fill the screen — the gallery keeps a phone-like width, centred */
+@media (min-width: 561px) and (max-width: 980px) { .cs-gal { width: 100%; max-width: 560px; margin: 0 auto; } }
 .cs-brand { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
 .cs-brand h3 { margin: 0 0 2px; }
 .cs-logo { flex: none; display: grid; place-items: center; width: 64px; height: 64px; padding: 9px; border: 1px solid #E3EAF3; border-radius: 16px; background: #fff; box-shadow: 0 10px 22px -18px rgba(2,16,36,.5); }
@@ -2013,6 +2029,14 @@ details.p-more p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color:
 .dm-wa svg { width: 18px; height: 18px; flex: none; }
 .dm-wa.off { pointer-events: none; opacity: .45; }
 .dm-hint { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+/* round 43: the team and its time at the top of the panel; the site's own crew line in the price box gives way to it */
+.dm-crew { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border: 1px solid #D6E4FB; border-radius: 14px; background: #F2F7FF; }
+.dm-crew svg { flex: none; width: 30px; height: 30px; color: var(--blue); }
+.dm-crew b { display: block; font: 800 18px/1.25 Montserrat, sans-serif; color: var(--ink); }
+.dm-crew small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.dm .p-meta { display: none; }
+.dm-chem .wz, .dm-chem .wz-nav { display: none; }
+.dm-hr .stepper output { min-width: 100px; padding: 0 4px; white-space: nowrap; }
 @media (max-width: 1020px) {
   .dm-grid { grid-template-columns: minmax(0, 1fr); }
   .dm-panel { position: static; }

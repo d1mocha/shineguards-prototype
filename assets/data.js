@@ -1253,7 +1253,7 @@ const OBJ_TOP = ['offices', 'hotels', 'restaurants', 'shops', 'gyms', 'beauty'];
 // ([file in assets/team, alt, crop]); `tags` replace «До / Після» where the two photos are not the same spot.
 const CASES = {
   shops: [{
-    name: 'Lululemon', kind: 'Магазин', place: 'Kärntner Straße, Відень',
+    name: 'Lululemon', kind: 'Магазин одягу', place: 'Kärntner Straße, Відень',
     // the same mark as among the clients' logos (LOGOS)
     logo: 'https://upload.wikimedia.org/wikipedia/commons/2/22/Lululemon_Athletica_logo.svg',
     sub: 'Від прибирання після ремонту до щоденного обслуговування — історія одного магазину.',
@@ -1267,17 +1267,16 @@ const CASES = {
       { t: 'Щодня', when: 'з 4 вересня · пн–сб',
         text: 'Після відкриття клієнт залишив прибирання за нами. Шість разів на тиждень двоє клінерів прибирають обидва поверхи: пил з полиць, меблів, каси й кулера, примірочні й дзеркала, підлога, санвузол і кабінет менеджера; раз на місяць — вікна. Щоранку — фотозвіт до і після.', },
     ],
-    // the finished store after our cleaning, in the order of the story: [file, alt, stage (0-based: the caption, the stage
-    // chips and the text under the gallery follow it), object-position]
+    // the finished store (the owner's photos, 2026-10-20): [file, alt, the zone it shows (the caption), object-position]
     gallery: [
-      ['case-lulu-g3.jpg', 'Стіна з легінсами й полиці Lululemon після прибирання після ремонту', 0],
-      ['case-lulu-g7.jpg', 'Примірочна Lululemon після прибирання: дзеркало з підсвіткою без розводів', 0],
-      ['case-lulu-g5.jpg', 'Каса Lululemon у день відкриття: чиста стійка й підлога з терацо', 1],
-      ['case-lulu-g6.jpg', 'Коридор примірочних Lululemon перед відкриттям: деревʼяна підлога без пилу', 1],
-      ['case-lulu-g1.jpg', 'Вхід до торгового залу Lululemon: деревʼяна арка, підлога з терацо без пилу й розводів', 2],
-      ['case-lulu-g2.jpg', 'Вигнута стіна з полицями й рослина в залі Lululemon після прибирання', 2],
-      ['case-lulu-g4.jpg', 'Торговий зал Lululemon: сходи, ліфт і чиста підлога з терацо', 2],
-      ['case-lulu-g8.jpg', 'Деревʼяні сходи в магазині Lululemon після щоденного прибирання', 2],
+      ['case-lulu-p1.jpg', 'Вхід до магазину Lululemon на Kärntner Straße ввечері: скляний фасад без розводів', 'Фасад і вхід'],
+      ['case-lulu-p2.jpg', 'Вітрина Lululemon з манекенами після миття скла', 'Вітрини'],
+      ['case-lulu-p3.jpg', 'Арка до торгового залу Lululemon: підлога з терацо без пилу', 'Торговий зал'],
+      ['case-lulu-p4.jpg', 'Стійки з одягом і диван у залі Lululemon', 'Стійки з одягом'],
+      ['case-lulu-p5.jpg', 'Торговий зал Lululemon: вішаки з одягом і чиста підлога з терацо', 'Підлога з терацо'],
+      ['case-lulu-p6.jpg', 'Примірочна Lululemon: дзеркало з підсвіткою без розводів', 'Примірочні'],
+      ['case-lulu-p7.jpg', 'Коридор примірочних Lululemon: деревʼяна підлога без пилу', 'Коридор примірочних'],
+      ['case-lulu-p8.jpg', 'Каса Lululemon: стійка й підлога з терацо', 'Каса'],
     ],
     work: ['Обидва поверхи: пил з полиць, меблів, каси й кулера', 'Примірочні та дзеркала — без розводів', 'Підлога — підмітаємо й миємо', 'Санвузол: сантехніка, дзеркало, розхідники', 'Кабінет менеджера', 'Вікна — раз на місяць', 'Засоби та інвентар — наші, щоранку фотозвіт'],
     result: 'Магазин відкрився вчасно, 3 вересня, і клієнт залишив за нами щоденне прибирання — шість ранків на тиждень.',
