@@ -100,7 +100,7 @@ const state = {
     boffice: 0, bdoor: 0, bshow: 0, bpano: 0, bpart: 0, facade: 0, regular: 'once', baccess: 'easy' }, // the b… keys: business glass
   biz: { obj: 'office', freq: 2, hours: 3, cleaners: 1, early: false, urgent: false, haccp: false, dirty: false, ownChem: false, winHours: 0 },
   apt: { rows: [{ sqm: 45, n: 1 }], chem: false, linen: false, urgent: false, kind: 'apt', ctype: 'short', common: false, commonArea: HOSP.common.def, rooms: 20, htype: 'both' },
-  drOpen: new Set(['kitchen']), faqCat: 0, wipeBonus: false, caseIdx: 0, hcl: 0,
+  drOpen: new Set(['kitchen']), faqCat: 0, wipeBonus: false, caseIdx: 0, caseStage: 0, hcl: 0,
   ui: { more: false, winMore: false, aptMore: false, bizMore: false, extras: false, welcome: false },
   winStep: 1, chemStep: 1, chemCats: new Set(), faqAll: false,
 };
@@ -2311,6 +2311,16 @@ function beforeAfterHTML(before, after) {
       <span class="ba-tag l">${tl(`До`)}</span><span class="ba-tag r">${tl(`Після`)}</span><span class="ba-line" aria-hidden="true"></span><span class="ba-knob" aria-hidden="true">${BA_ARROWS}</span>
       <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="${tl(`Порівняти фото до і після прибирання`)}" /></div>`;
 }
+// a case told in stages (after the renovation → before the opening → every day): chips, the stage's two photos side by
+// side — they are not always the same frame, so not a slider — and what was done at that stage
+const PLAY_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M10 8.5v7l6-3.5z"/></svg>';
+function caseStagesHTML(c) {
+  const i = Math.min(state.caseStage, c.stages.length - 1), s = c.stages[i], tags = s.tags || [tl('До'), tl('Після')];
+  const half = ([file, alt, pos], tag, side) => `<figure><img alt="${alt}" src="${teamSrc({ file })}" style="object-position:${pos || '50% 50%'}" /><span class="ba-tag ${side}">${tag}</span></figure>`;
+  return `<div class="cs-media"><div class="cs-stages">${c.stages.map((x, k) => `<button type="button" class="chip" data-cstage="${k}" aria-pressed="${k === i}">${k + 1} · ${x.t}</button>`).join('')}</div>
+    <div class="cs-split">${half(s.before, tags[0], 'l')}${half(s.after, tags[1], 'r')}</div>
+    <p class="cs-stage-t"><b>${s.when}</b>${s.text}</p>${c.video ? `<a class="cs-video" href="${c.video}" target="_blank" rel="noopener">${PLAY_SVG}${tl('Відео з цього проєкту в Instagram')}</a>` : ''}</div>`;
+}
 function caseHTML(c) {
   const top = `<div class="cs-top"><span class="cs-kicker">${tl(`Кейс ·`)} ${c.kind}</span>${c.demo ? tl('<span class="cs-demo">Приклад оформлення</span>') : ''}</div>
       <h3>${c.name}</h3><p class="cs-place">${c.place}</p>
@@ -2320,10 +2330,10 @@ function caseHTML(c) {
   const quote = c.quote ? `<figure class="cs-quote"><blockquote>${c.quote[0]}</blockquote><figcaption>${c.quote[1]}</figcaption></figure>` : '';
   const btn = tl('<button type="button" class="btn-blue" data-open="book" data-bizgoal="Комерційна пропозиція">Отримати пропозицію для свого обʼєкта</button>');
   // a real case without photos: no empty «before / after» frames — the facts on the left, the scope of work on the right
-  if (!c.demo && !(c.before && c.after)) return `<article class="cs text"><div class="cs-body">${top}
+  if (!c.demo && !c.stages && !(c.before && c.after)) return `<article class="cs text"><div class="cs-body">${top}
       <div class="cs-task"><h4>${tl(`Задача`)}</h4><p>${c.task}</p></div>${c.note ? `<div class="cs-note"><h4>${tl(`Особливості обʼєкта`)}</h4><p>${c.note}</p></div>` : ''}${res}${quote}</div>
     <div class="cs-side">${work}</div><div class="cs-act">${btn}</div></article>`;
-  return `<article class="cs ${c.demo ? 'demo' : ''}">${beforeAfterHTML(c.before, c.after)}
+  return `<article class="cs ${c.demo ? 'demo' : ''}">${c.stages ? caseStagesHTML(c) : beforeAfterHTML(c.before, c.after)}
     <div class="cs-body">${top}
       <div class="cs-cols"><div><h4>${tl(`Задача`)}</h4><p>${c.task}</p></div><div>${work}</div></div>
       ${c.note ? `<div class="cs-note"><h4>${tl(`Особливості обʼєкта`)}</h4><p>${c.note}</p></div>` : ''}${res}${quote}${btn}
@@ -2335,7 +2345,7 @@ function caseSec(id) {
   // several cases of one object type: chips with the clients' names switch the card
   const tabs = list.length > 1 ? `<div class="cs-tabs">${list.map((x, k) => `<button type="button" class="chip" data-case="${k}" aria-pressed="${k === i}">${x.name}</button>`).join('')}</div>` : '';
   return sec('case', list.length > 1 ? tl('Кейси наших клієнтів') : tl('Кейс: як це працює на обʼєкті'),
-    list[0].demo ? tl('Так виглядатиме кейс на цій сторінці. Назву клієнта, цифри й фото «до / після» додамо, щойно отримаємо дані.') : '', `${tabs}<div id="caseBody">${caseHTML(list[i])}</div>`);
+    list[0].demo ? tl('Так виглядатиме кейс на цій сторінці. Назву клієнта, цифри й фото «до / після» додамо, щойно отримаємо дані.') : list.length === 1 && list[0].sub ? list[0].sub : '', `${tabs}<div id="caseBody">${caseHTML(list[i])}</div>`);
 }
 const objLink = (to) => { const [k, id] = to.split(':'); return k === 'svc' ? svcHref(id, 'business') : objHref(id); };
 /* «Що входить» of a page with its own story: zones of the object, the general cleaning apart (kitchens), then what is
@@ -2928,8 +2938,12 @@ document.addEventListener('click', (e) => {
     if (state.type !== k) setType(k); state.touched = true;
     return openDrawer(g);
   }
+  if (d.cstage != null) { // a stage of the case's story
+    const list = casesFor(SVC_ID); state.caseStage = +d.cstage;
+    $('#caseBody').innerHTML = caseHTML(list[Math.min(state.caseIdx, list.length - 1)]); return;
+  }
   if (d.case != null) { // another client's case of the same object type
-    const list = casesFor(SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1);
+    const list = casesFor(SVC_ID); state.caseIdx = Math.min(+d.case, list.length - 1); state.caseStage = 0;
     $('#caseBody').innerHTML = caseHTML(list[state.caseIdx]); $$('.cs-tabs .chip').forEach((x, k) => x.setAttribute('aria-pressed', k === state.caseIdx)); return;
   }
   if (d.cklist) { openChecklist(d.cklist); return; }

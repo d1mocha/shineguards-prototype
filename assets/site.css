@@ -1607,6 +1607,16 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 .cs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; align-items: start; margin-top: 26px; background: #fff; border: 1px solid #E3EAF3; border-radius: 28px; padding: 22px; box-shadow: 0 22px 44px -38px rgba(2,16,36,.45); }
 .cs-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .cs-tabs + #caseBody .cs { margin-top: 14px; }
+/* a case told in stages: chips, two photos side by side, what was done at that stage, the video */
+.cs-media { display: grid; gap: 12px; min-width: 0; }
+.cs-stages { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-split { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; aspect-ratio: 4 / 3; border-radius: 20px; overflow: hidden; background: #fff; }
+.cs-split figure { position: relative; margin: 0; min-height: 0; background: #DCE6F0; }
+.cs-split img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cs-stage-t { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink2); }
+.cs-stage-t b { display: block; margin-bottom: 2px; font: 700 13px Inter, sans-serif; color: var(--blue); }
+.cs-video { display: inline-flex; align-items: center; gap: 8px; justify-self: start; font-weight: 700; font-size: 14px; color: var(--blue); text-decoration: none; }
+.cs-video:hover { text-decoration: underline; }
 /* before / after: the "before" photo lies on top and is cut at the divider */
 .ba { position: relative; aspect-ratio: 4 / 3; border-radius: 20px; overflow: hidden; background: #DCE6F0; --p: 50%; }
 .ba-a, .ba-b { position: absolute; inset: 0; }

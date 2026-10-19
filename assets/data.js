@@ -1247,7 +1247,34 @@ const OBJ_TOP = ['offices', 'hotels', 'restaurants', 'shops', 'gyms', 'beauty'];
 // photos appear only when the owner gives them). Nothing about a client is invented and no placeholder is published:
 // a page without a real case has no case block. The layout sample opens only by the ?demo=cases address.
 // A client appears here only when the owner explicitly asks to publish that client's case.
-const CASES = {};
+// Real client cases — only those the owner asked to publish. Lululemon: asked on 2026-10-19; the client agreed to name the
+// store and to show photos of the space (no people). A case told in stages has one pair of photos per stage
+// ([file in assets/team, alt, crop]); `tags` replace «До / Після» where the two photos are not the same spot.
+const CASES = {
+  shops: [{
+    name: 'Lululemon', kind: 'Магазин', place: 'Kärntner Straße, Відень',
+    sub: 'Від прибирання після ремонту до щоденного обслуговування — історія одного магазину.',
+    facts: [['Площа', '≈ 400 м², 2 поверхи'], ['Графік', 'пн–сб, щоранку'], ['Команда', '2 клінери щодня'], ['Працюємо разом', 'з вересня 2026']],
+    task: 'За три дні до відкриття магазин після будівельних робіт треба було довести до стану, готового до фотосесії й перших покупців, — а далі щодня підтримувати обидва поверхи в бездоганному стані.',
+    stages: [
+      { t: 'Після ремонту', when: '1–2 вересня · 5 клінерів',
+        text: 'Команда була на обʼєкті вже наступного дня після запиту: будівельний пил з усіх поверхонь, підлога із залишками фарби, клею й затирки, примірочні, захисна плівка й наклейки. Другого дня — фінальне прибирання перед фотосесією: скло й дзеркала без розводів, полиці, підлога.',
+        before: ['case-lulu-1-before.jpg', 'Примірочна Lululemon до прибирання після ремонту: дзеркало в захисній плівці, будівельний пил', '50% 52%'],
+        after: ['case-lulu-1-after.jpg', 'Примірочна Lululemon після прибирання: чисте дзеркало з підсвіткою, підлога без пилу', '25% 50%'] },
+      { t: 'Перед відкриттям', when: 'ніч на 3 вересня · 6 клінерів', tags: ['Увечері', 'Вранці'],
+        text: 'Після фотосесії в магазині ще тривали будівельні роботи. Команда працювала вночі, з 21:00: глибоке прибирання верхнього поверху — пил, підлога, панелі — і миття вікон після зняття огорожі. Вранці магазин відкрився.',
+        before: ['case-lulu-2-before.jpg', 'Магазин Lululemon увечері перед відкриттям: тирса й інструменти після будівельних робіт біля сходів', '45% 60%'],
+        after: ['case-lulu-2-after.jpg', 'Касова зона Lululemon вранці в день відкриття: чиста підлога з терацо', '35% 60%'] },
+      { t: 'Щодня', when: 'з 4 вересня · пн–сб',
+        text: 'Після відкриття клієнт залишив прибирання за нами. Шість разів на тиждень двоє клінерів прибирають обидва поверхи: пил з полиць, меблів, каси й кулера, примірочні й дзеркала, підлога, санвузол і кабінет менеджера; раз на місяць — вікна. Щоранку — фотозвіт до і після.',
+        before: ['case-lulu-3-before.jpg', 'Підлога в примірочній Lululemon перед щоденним прибиранням', '50% 50%'],
+        after: ['case-lulu-3-after.jpg', 'Підлога в примірочній Lululemon після щоденного прибирання', '50% 50%'] },
+    ],
+    work: ['Обидва поверхи: пил з полиць, меблів, каси й кулера', 'Примірочні та дзеркала — без розводів', 'Підлога — підмітаємо й миємо', 'Санвузол: сантехніка, дзеркало, розхідники', 'Кабінет менеджера', 'Вікна — раз на місяць', 'Засоби та інвентар — наші, щоранку фотозвіт'],
+    result: 'Магазин відкрився вчасно, 3 вересня, і клієнт залишив за нами щоденне прибирання — шість ранків на тиждень.',
+    video: 'https://www.instagram.com/reel/DdETqRcgkAj/',
+  }],
+};
 const OBJ_PAGE = { office: 'offices', restaurant: 'restaurants', gym: 'gyms', shop: 'shops', apartments: 'hotels' };
 const CUT = (v, f) => `https://res.cloudinary.com/dbiy7qyfe/image/upload/h_640,f_auto,q_auto/${v}/${f}`;
 // A frame of the photo shoot straight from the owner's Google Drive folder (the first-screen photos of the object pages)
