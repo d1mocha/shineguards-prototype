@@ -165,7 +165,7 @@ function dmQuote() {
     if (t === 'windows') { // an estimate: the time of the windows to a quarter of an hour, the price confirmed by photos
       const w = c.win, wn = state.win, n = winCount() - winPhotoCount();
       if (!w) return none(TYPES.windows.full, winPhotoCount() ? 'Обрано лише «інший тип» вікна — його ціну називаємо за фото.' : 'Додайте хоча б одне вікно.');
-      const minutes = w.upTo - 15, min = r.minVisit, cl = dmTeamFor(minutes + 15, 360), crew = { c: cl, from: r5(minutes / cl), to: r5((minutes + 15) / cl), approx: true };
+      const minutes = w.upTo - 15, min = r.minVisit, cl = dmTeamFor(minutes + 15, 360), crew = { c: cl, from: r5(minutes / cl), to: r5((minutes + 15) / cl), sum: [minutes, minutes + 15], approx: true };
       return { title: TYPES.windows.full, kind: 'windows', crew, unit, per: 'job', price: c.range, approx: true, cents: false, min,
         facts: [['Вікон', `${n} шт · ${wn.sides === 2 ? 'з обох боків' : 'зсередини'}`], ['Ставка', `${dec(r.windowHour)} € / год`], ['Мінімум', eur(min)]],
         lines: [], note: winPhotoCount() ? `Ще ${winPhotoCount()} шт «інший тип» — їх ціна лише за фото, у суму не входять.` : '',
@@ -203,7 +203,7 @@ function dmQuote() {
   }
   if (c.win) { // business glass: minutes × the business rate, blinds per window
     const w = state.win, minutes = c.upTo - 15, n = winCount(), inside = c.hard || w.sides === 1, reg = WIN_BIZ.regular.find(([k]) => k === w.regular);
-    const cl = dmTeamFor(minutes + 15, 360), crew = { c: cl, from: r5(minutes / cl), to: r5((minutes + 15) / cl), approx: true };
+    const cl = dmTeamFor(minutes + 15, 360), crew = { c: cl, from: r5(minutes / cl), to: r5((minutes + 15) / cl), sum: [minutes, minutes + 15], approx: true };
     return { title: 'Миття вікон для бізнесу', kind: 'bizWindows', crew, unit, per: 'job', price: c.range, approx: true, cents: false,
       facts: [['Скло', `${n} шт${w.facade ? ` + ${w.facade} м² вітрин / фасаду` : ''} · ${inside ? 'зсередини' : 'з обох боків'}`], ['Ставка', `${dec(c.rate)} € / год`], ['Мінімум', eur(c.min)], ...(c.blinds ? [['Жалюзі', eur(c.blinds)]] : [])],
       lines: [], note: c.hard ? 'Складний доступ ззовні — у суму входить лише миття зсередини.' : '',
@@ -227,7 +227,8 @@ const dmSum = (q, v) => `${q.approx ? '≈ ' : ''}${v[0] === v[1] ? (q.cents ? e
 // the team at the top of the panel: «2 клінери · 4 год 30 хв» — a fixed norm for a package, «≈» for an estimate
 function dmCrewHTML(k) {
   if (!k) return '';
-  const each = `${dmHM(k.from)}${k.to ? ` – ${dmHM(k.to)}` : ''}`, all = `${dmHM(k.c * k.from)}${k.to ? ` – ${dmHM(k.c * k.to)}` : ''}`;
+  // the total from the exact minutes when known: each cleaner's share is rounded to 5 minutes, the sum of the work is not
+  const each = `${dmHM(k.from)}${k.to ? ` – ${dmHM(k.to)}` : ''}`, all = k.sum ? `${dmHM(k.sum[0])} – ${dmHM(k.sum[1])}` : `${dmHM(k.c * k.from)}${k.to ? ` – ${dmHM(k.c * k.to)}` : ''}`;
   return `<div class="dm-crew">${DM_TEAM_SVG}<div><b>${k.approx ? '≈ ' : ''}${dmCl(k.c)} · ${each}${k.per ? ' за візит' : ''}</b><small>${k.note || (k.c > 1 ? `разом ${all} роботи` : k.approx ? 'орієнтовно' : 'фіксована норма')}</small></div></div>`;
 }
 
