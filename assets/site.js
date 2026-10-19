@@ -117,7 +117,7 @@ const PAGE_OBJ = PAGE === 'object' ? OBJECTS[SVC_ID] : null;
 let SOLO_B = PAGE_OBJ && PAGE_OBJ.solo ? BIZ_SOLO[SVC_ID] : null, SOLO_ID = SOLO_B ? SVC_ID : null;
 const SOLO_OBJ = !!(PAGE_OBJ && PAGE_OBJ.solo); // an object page with its own story (and its own calculator)
 const CHEM_PAGE = PAGE === 'service' && SVC_ID === 'chem' && state.mode === 'private'; // the dry-cleaning page
-const soloState = (cfg) => ({ kind: 0, area: cfg.area[3], time: cfg.timeDef || 'before', glass: 'no', adds: new Set(), zones: new Set(cfg.zones.map((z) => z.id)), ktype: 'regular', kfmt: 'sched', kper: 'month', haccp: 'ask', dirt: 'mid',
+const soloState = (cfg) => ({ kind: 0, area: cfg.area[3], time: cfg.timeDef || 'before', glass: 'no', adds: new Set(cfg.addsOn ? cfg.adds.map(([k]) => k) : []), zones: new Set(cfg.zones.map((z) => z.id)), ktype: 'regular', kfmt: 'sched', kper: 'month', haccp: 'ask', dirt: 'mid',
   counts: Object.fromEntries((cfg.counts || []).map(([k, , n]) => [k, n])), flags: new Set() });
 if (SOLO_B) state.bs = soloState(SOLO_B);
 // The business home counts by area as the object pages do, in three questions: type → area → visits a week (owner,
@@ -979,8 +979,8 @@ function aptInputsB(sk, n) {
     // an apart-hotel differs from apartments by its common areas only
     + (a.kind === 'aparthotel' ? `<div class="apt-common">${checkrow('a:common', a.common, tl('Прибирання загальних зон'), tl('хол, коридори, сходи — щодня, окремою сумою на місяць'), '')}${a.common ? `<div class="q"><span class="qt">${tl(`Площа загальних зон`)}</span><span class="val-big num" id="aptCommonVal">${a.commonArea} ${tl(`м²`)}</span></div>
         <input type="range" id="aptCommon" min="${hc.min}" max="${hc.max}" step="5" value="${a.commonArea}" style="--p:${pct}%" aria-label="${tl(`Площа загальних зон, м²`)}" />${sk ? tl('<p class="bs-hint">Вартість прибирання загальних зон у Братиславі розрахує менеджер.</p>') : ''}` : ''}</div>` : '')
-    + (P() ? moreBtn('aptMore', `${tl(`Опції: хімія, білизна, терміново`)}${opts ? ` ${tl(`· обрано`)} ${opts}` : ''}`, state.ui.aptMore) : tl('<div class="sub-l">Додаткові опції</div>'))
-    + (!P() || state.ui.aptMore ? `<div class="opts" style="margin-top:6px">${tchip('a:chem', a.chem, tl('Наша хімія та інвентар'), P() ? '+8%' : '')}${tchip('a:linen', a.linen, tl('Доставка білизни'), P() ? `+${APT.linen[sk ? 'sk' : 'at']} €` : '')}${tchip('a:urgent', a.urgent, tl('Терміново, день у день'), P() ? '+20%' : '')}</div>` : '');
+    + (P() ? moreBtn('aptMore', `${tl(`Опції: засоби, білизна, терміново`)}${opts ? ` ${tl(`· обрано`)} ${opts}` : ''}`, state.ui.aptMore) : tl('<div class="sub-l">Додаткові опції</div>'))
+    + (!P() || state.ui.aptMore ? `<div class="opts" style="margin-top:6px">${tchip('a:chem', a.chem, tl('Засоби та інвентар від Shine Guards'), P() ? '+8%' : '')}${tchip('a:linen', a.linen, tl('Доставка білизни'), P() ? `+${APT.linen[sk ? 'sk' : 'at']} €` : '')}${tchip('a:urgent', a.urgent, tl('Терміново, день у день'), P() ? '+20%' : '')}</div>` : '');
 }
 /* Hotels page: apartments / Airbnb and apart-hotels are counted from the apartment tariff, a hotel gets an individual offer */
 const hospPage = () => !P() && ((PAGE === 'object' && SVC_ID === 'hotels') || (PAGE === 'service' && SVC_ID === 'airbnb'));
@@ -1610,7 +1610,8 @@ const galKey = () => (PAGE === 'home' ? `home:${state.mode}` : PAGE === 'object'
 function teamGalleryHTML() {
   const base = PAGE === 'about' ? TEAM_GALLERY.filter((sl) => sl.key !== 'team') : TEAM_GALLERY; // About shows the team in its first screen
   const main = [...base, ...GALLERY_EXTRA].find((sl) => sl.key === (GALLERY_MAIN[galKey()] || (P() ? null : 'team')));
-  const slides = main ? [main, ...base.filter((sl) => sl !== main)] : base;
+  const own = GALLERY_PAGE[galKey()]; // a page with its own set of photos shows exactly them
+  const slides = own ? own.map((k) => [...TEAM_GALLERY, ...GALLERY_EXTRA].find((sl) => sl.key === k)) : main ? [main, ...base.filter((sl) => sl !== main)] : base;
   return `<div class="tg reveal" data-gal><div class="tg-track">${slides.map((sl, i) => `<figure class="tg-s photo"><img ${i ? 'loading="lazy"' : ''} alt="${sl.alt}" src="${teamSrc(sl)}" ${sl.pos ? `style="object-position:${sl.pos}"` : ''} /><figcaption class="tg-cap">${sl.cap}</figcaption></figure>`).join('')}</div>
     <div class="tg-nav"><button type="button" data-galnav="-1" aria-label="${tl(`Попереднє фото`)}">‹</button><span class="tg-dots">${slides.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span><button type="button" data-galnav="1" aria-label="${tl(`Наступне фото`)}">›</button></div></div>`;
 }

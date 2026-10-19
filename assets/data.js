@@ -355,7 +355,8 @@ const BIZ_SOLO = {
     glass: [['no', 'Ні'], ['in', 'Зсередини'], ['both', 'З обох боків']], glassPhoto: true,
     glassNote: 'Миття вітрин — за обраним графіком. Вартість залежить від площі скла та доступу — уточнимо її після фото або огляду обʼєкта.',
     // the extra zones always add to the price, as a restaurant's kitchen does (the owner's rule of 2026-10-16, applied here too)
-    adds: [['fitting', 'Примірочні', .15], ['staff', 'Кімната персоналу', .15], ['wc', 'Санвузол', .15], ['stock', 'Склад, підсобка', .15]], addsOver: true,
+    // all of them are ticked at first (owner, 2026-10-19), the client removes what the shop does not have
+    adds: [['fitting', 'Примірочні', .15], ['staff', 'Кімната персоналу', .15], ['wc', 'Санвузол', .15], ['stock', 'Склад, підсобка', .15]], addsOver: true, addsOn: true,
     minNote: 'Торговий зал вкладається в неї, а додаткові зони рахуються окремо — понад мінімум.',
   },
   restaurants: {
@@ -407,7 +408,7 @@ const APT = {
   labels: ['до 50', '51–70', '71–90', '91–110', '111–130', '131–160', '161–190'],
   at: [39.06, 46, 54.2, 60.45, 72.5, 85.5, 98.5],
   sk: [28.12, 33.12, 39.02, 43.52, 52.2, 61.56, 70.92],
-  linen: { at: 10, sk: 8 },
+  linen: { at: 12, sk: 8 }, // owner, 2026-10-19: linen delivery 10 → 12 € (AT/DE); Bratislava unchanged
   counts: [ { id: '1', label: '1–4', d: 0 }, { id: '5', label: '5–9', d: .03 }, { id: '10', label: '10–19', d: .05 }, { id: '20', label: '20–49', d: .07 }, { id: '50', label: '50+', d: .10 } ],
 };
 
@@ -1269,11 +1270,17 @@ const TEAM_GALLERY = [
 // Photos the owner gave to single pages (Oct 2026): such a photo opens the carousel on its page and is not shown on the
 // others. Their captions are mine.
 const GALLERY_EXTRA = [
-  { key: 'vacuum', file: 'work-vacuum.jpg', alt: 'Клінерка Shine Guards пилососить паркет у вітальні', cap: 'Чистота без ваших зусиль', pos: '50% 67%' },
+  { key: 'vacuum', file: 'work-vacuum.jpg', alt: 'Клінерка Shine Guards пилососить паркет у вітальні', cap: 'Чистота без ваших зусиль', pos: '50% 22%' },
   { key: 'oven', file: 'work-oven.jpg', alt: 'Клінерка Shine Guards миє духовку всередині', cap: 'Чисто й усередині', pos: '70% 50%' },
   { key: 'steam', file: 'work-sink.jpg', alt: 'Клінерка Shine Guards чистить умивальник парогенератором', cap: 'Чищення парою', pos: '50% 55%' },
   { key: 'window', file: 'work-window.jpg', alt: 'Клінерка Shine Guards миє скло балконних дверей', cap: 'Без розводів', pos: '50% 84%' },
   { key: 'towels', file: 'work-towels.jpg', alt: 'Клінерка Shine Guards у білих рукавичках розкладає рушники на полиці', cap: 'Готово для гостей', pos: '50% 38%' },
+  // apartments ready for guests (owner, 2026-10-19 — for the apartments & hotels page, in his order); the captions are mine
+  { key: 'apt-living', file: 'apt-living.jpg', alt: 'Вітальня апартаментів після прибирання Shine Guards: обідній стіл, диван і килим', cap: 'Апартаменти готові до заїзду', pos: '45% 50%' },
+  { key: 'apt-bath', file: 'apt-bath.jpg', alt: 'Санвузол апартаментів після прибирання: ванна, умивальник і чистий рушник', cap: 'Чистий санвузол', pos: '55% 50%' },
+  { key: 'apt-kitchen', file: 'apt-kitchen.jpg', alt: 'Кухня апартаментів після прибирання: острів і чисті робочі поверхні', cap: 'Кухня готова для гостей', pos: '40% 50%' },
+  { key: 'apt-bed', file: 'apt-bed.jpg', alt: 'Спальня апартаментів, готова до заїзду: свіжа білизна й рушники на ліжку', cap: 'Свіжа білизна й рушники', pos: '50% 60%' },
+  { key: 'apt-shelf', file: 'apt-shelf.jpg', alt: 'Полиця з чистими складеними рушниками у ванній кімнаті апартаментів', cap: 'Рушники складені по-готельному', pos: '50% 40%' },
 ];
 // The photo a page opens the carousel with — its `key` (from either list); a page without an entry opens with the first
 // photo, and the other photos keep their order. Pages: 'home:private', 'home:business', 'list', 'about',
@@ -1294,6 +1301,12 @@ const GALLERY_MAIN = {
   // business pages (review, Oct 2026): the frames that read as work on an object, until the owner sends photos from real
   // objects; a business page without an entry opens with the team (teamGalleryHTML)
   'object:kitchens': 'kitchen', 'object:shops': 'window', 'object:gyms': 'steam', 'object:medical': 'steam', 'object:beauty': 'steam',
+};
+// A page with its own carousel: exactly these photos in this order (owner, 2026-10-19: the apartments & hotels page keeps
+// its first photo, the rest are his apartment photos). Its twin, the business apartments / Airbnb page, shows the same.
+const GALLERY_PAGE = {
+  'object:hotels': ['towels', 'apt-living', 'apt-bath', 'apt-kitchen', 'apt-bed', 'apt-shelf'],
+  'service:business:airbnb': ['towels', 'apt-living', 'apt-bath', 'apt-kitchen', 'apt-bed', 'apt-shelf'],
 };
 // the photo in the first screen of the About page: the team (the carousel of that page goes without it)
 const ABOUT_PHOTO = { file: 'team-portrait.jpg', alt: 'Три клінерки Shine Guards у формі на дивані', pos: '40% 50%' };
