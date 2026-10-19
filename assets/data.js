@@ -1271,7 +1271,6 @@ const CASES = {
     // (the caption), object-position]
     gallery: [
       ['case-lulu-p0.jpg', 'Фасад магазину Lululemon на Kärntner Straße: логотип і вивіска на тлі неба', 'Фасад'],
-      ['case-lulu-p1.jpg', 'Вхід до магазину Lululemon ввечері: скляний фасад без розводів', 'Вхід увечері'],
       ['case-lulu-p2.jpg', 'Вітрина Lululemon з манекенами після миття скла', 'Вітрини'],
       ['case-lulu-p3.jpg', 'Арка до торгового залу Lululemon: підлога з терацо без пилу', 'Торговий зал'],
       ['case-lulu-p4.jpg', 'Стійки з одягом і диван у залі Lululemon', 'Стійки з одягом'],
