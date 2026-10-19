@@ -30,7 +30,7 @@ OG_IMAGE = 'https://res.cloudinary.com/dbiy7qyfe/image/upload/w_1200,h_630,c_fil
 LANGS = ('ua', 'ru', 'en', 'de', 'sk')
 # published languages: --share builds only these, and the language menu opens the others on shineguards.com
 # (the local build makes every language, to check a translation before it is published)
-READY = ('ua',)
+READY = LANGS
 HTML_LANG = {'ua': 'uk', 'ru': 'ru', 'en': 'en', 'de': 'de', 'sk': 'sk'}
 OG_LOCALE = {'ua': 'uk_UA', 'ru': 'ru_RU', 'en': 'en_GB', 'de': 'de_AT', 'sk': 'sk_SK'}
 
