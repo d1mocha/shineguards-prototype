@@ -41,7 +41,8 @@ const IDX = !SINGLE && location.protocol === 'file:' ? 'index.html' : ''; // fol
 const LOGO = SINGLE ? SINGLE.logo : ROOT + 'assets/logo.svg';
 const PAGE = META.page;
 const SVC_ID = META.svc || null;
-const GLOBAL_PAGE = ['about', 'promotions', 'contacts', 'partnership'].includes(PAGE);
+const GLOBAL_PAGE = ['about', 'promotions', 'contacts', 'partnership', 'manager'].includes(PAGE);
+const DM_PAGE = PAGE === 'manager'; // the managers' calculator (assets/dm.js): every service counted in place, no navigation
 
 /* ═════════ LANGUAGES ═════════
    Five languages: ua — the source of every text, ru, en, de, sk. A page knows its language from the address
@@ -521,7 +522,7 @@ function computeBizSolo(id) {
   const floor = Math.round(min * visits);
   const at = (f) => { const p = Math.max(min, core * f) + extra * f; return p <= min ? floor : Math.max(floor, Math.round(p * visits / 10) * 10); };
   const range = BIZ_SOLO_RANGE.map(at);
-  return { ...base, oneOff, perWeek, rate, hours, monthHours, min, minApplied: core * BIZ_SOLO_RANGE[1] <= min, volume: !oneOff && monthHours >= BIZ.volumeHours,
+  return { ...base, oneOff, perWeek, rate, hours, coreH: hours - over, overH: over, visits, monthHours, min, minApplied: core * BIZ_SOLO_RANGE[1] <= min, volume: !oneOff && monthHours >= BIZ.volumeHours,
     photo: !!(kt && kt.photo), glassPhoto: !!(cfg.glassPhoto && st.glass !== 'no'), range, main: range[0] };
 }
 const compute = () => P() ? computePriv() : computeBiz();
@@ -794,22 +795,24 @@ const soloSvc = () => PAGE === 'service' && P() && SOLO_PAGE[SVC_ID] && state.ty
 const MOVES = [['out', tl('Виїжджаю'), tl('передаю квартиру')], ['in', tl('Заїжджаю'), tl('готую до заселення')]];
 const MOVE_FURN = [['furn', tl('З меблями'), tl('ціна й час — як у глибокого прибирання')], ['empty', tl('Порожня, без меблів'), tl('ціна й час — як у генерального')]];
 function soloHeadHTML(solo) {
-  return `<div class="calc-svc"><b>${ic(PAGE_SVC.icon)}${PAGE_SVC.name}</b><a href="${listHref()}">${tl(`Обрати іншу послугу`)}</a></div>`
-    + (solo === 'moveout' ? qLabel(1, tl('Ви заїжджаєте чи виїжджаєте?')) + `<div class="optcards two">${MOVES.map(([id, t, x]) => `<button type="button" class="optcard" data-move="${id}" aria-pressed="${state.move === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>`
+  return `<div class="calc-svc"><b>${ic(PAGE_SVC.icon)}${PAGE_SVC.name}</b><a href="${listHref()}">${tl(`Обрати іншу послугу`)}</a></div>` + (solo === 'moveout' ? moveQsHTML() : '');
+}
+function moveQsHTML() {
+  return qLabel(1, tl('Ви заїжджаєте чи виїжджаєте?')) + `<div class="optcards two">${MOVES.map(([id, t, x]) => `<button type="button" class="optcard" data-move="${id}" aria-pressed="${state.move === id}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>`
       + `<p class="bs-hint mv-hint">${SOLO_PAGE.moveout.moves.find(([id]) => id === state.move)[3]}</p>`
-      + qLabel(2, tl('Чи є в квартирі меблі?')) + `<div class="optcards two">${MOVE_FURN.map(([id, t, x]) => `<button type="button" class="optcard" data-movefurn="${id}" aria-pressed="${(id === 'empty') === state.moveEmpty}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>` : '');
+      + qLabel(2, tl('Чи є в квартирі меблі?')) + `<div class="optcards two">${MOVE_FURN.map(([id, t, x]) => `<button type="button" class="optcard" data-movefurn="${id}" aria-pressed="${(id === 'empty') === state.moveEmpty}"><b>${t}</b><small>${x}</small></button>`).join('')}</div>`;
 }
 function privInputsB() {
   const cp = cityPrices(), other = ['moveout', 'windows', 'chem', 'reno', 'extras'];
   const isOther = other.includes(state.type), open = state.ui.more || isOther;
   const solo = soloSvc();
   // a page about one service: no chooser of cleaning types, a quiet way out to the rest
-  let h = solo ? soloHeadHTML(solo) : qLabel(1, tl('Оберіть тип прибирання')) + `<div class="types">${['basic', 'general', 'deep'].map((t) => `<button type="button" class="type" data-type="${t}" aria-pressed="${state.type === t}"><b>${TYPES[t].name}</b><span>${tl(`від`)} <span class="from">${eur(cp[t][0])}</span></span></button>`).join('')}</div>
+  let h = DM_PAGE ? (state.type === 'moveout' ? moveQsHTML() : '') : solo ? soloHeadHTML(solo) : qLabel(1, tl('Оберіть тип прибирання')) + `<div class="types">${['basic', 'general', 'deep'].map((t) => `<button type="button" class="type" data-type="${t}" aria-pressed="${state.type === t}"><b>${TYPES[t].name}</b><span>${tl(`від`)} <span class="from">${eur(cp[t][0])}</span></span></button>`).join('')}</div>
     ${open ? `<div class="more-types">${other.map((t) => chip('data-type', t, state.type, TYPES[t].name)).join('')}</div>` : ''}
     ${isOther ? '' : moreBtn('more', tl('Інша послуга: переїзд, вікна, після ремонту…'), open)}`;
   if (isPackage()) {
     const pct = ((Math.min(state.sqm, 301) - 15) / 286 * 100).toFixed(1);
-    h += qLabel(solo === 'moveout' ? 3 : 2, tl('Площа квартири'), `<label class="area-big"><input id="sqmInput" type="number" inputmode="numeric" min="15" max="999" value="${state.sqm}" aria-label="${tl(`Площа в м²`)}" /><span>${tl(`м²`)}</span></label>`)
+    h += qLabel(solo === 'moveout' || (DM_PAGE && state.type === 'moveout') ? 3 : DM_PAGE ? 1 : 2, tl('Площа квартири'), `<label class="area-big"><input id="sqmInput" type="number" inputmode="numeric" min="15" max="999" value="${state.sqm}" aria-label="${tl(`Площа в м²`)}" /><span>${tl(`м²`)}</span></label>`)
       + `<input type="range" id="sqmRange" min="15" max="301" step="1" value="${Math.min(state.sqm, 301)}" style="--p:${pct}%" aria-label="${tl(`Площа, м²`)}" aria-valuetext="${state.sqm} ${tl(`квадратних метрів`)}" />`;
     if (state.sqm <= 300) {
       const c = computePriv(), add = c.lines.slice(1).reduce((t, l) => t + l.price, 0);
@@ -983,7 +986,7 @@ function aptInputsB(sk, n) {
     + (!P() || state.ui.aptMore ? `<div class="opts" style="margin-top:6px">${tchip('a:chem', a.chem, tl('Засоби та інвентар від Shine Guards'), P() ? '+8%' : '')}${tchip('a:linen', a.linen, tl('Доставка білизни'), P() ? `+${APT.linen[sk ? 'sk' : 'at']} €` : '')}${tchip('a:urgent', a.urgent, tl('Терміново, день у день'), P() ? '+20%' : '')}</div>` : '');
 }
 /* Hotels page: apartments / Airbnb and apart-hotels are counted from the apartment tariff, a hotel gets an individual offer */
-const hospPage = () => !P() && ((PAGE === 'object' && SVC_ID === 'hotels') || (PAGE === 'service' && SVC_ID === 'airbnb'));
+const hospPage = () => !P() && ((PAGE === 'object' && SVC_ID === 'hotels') || (PAGE === 'service' && SVC_ID === 'airbnb') || (DM_PAGE && state.biz.obj === 'apartments'));
 const roomWord = (n) => pl(n, 'номер|номери|номерів');
 function hospInputs() {
   const a = state.apt;
@@ -1311,6 +1314,7 @@ function bizOut() {
     ${c.win ? APPROX_NOTE : ''}${pills(inc)}</div>${foot(tl('Отримати пропозицію'))}`;
 }
 function renderCalc() {
+  if (DM_PAGE) { dmRenderCalc(); return; }
   const box = $('#calc'); if (!box || box.dataset.kind === 'partner') return;
   box.classList.toggle('v2', useB()); box.classList.toggle('solo', !!bizSolo() || hospPage());
   box.innerHTML = `
@@ -1323,6 +1327,7 @@ function renderCalc() {
 }
 let lastNum = null;
 function paintOut() {
+  if (DM_PAGE) { dmPaintOut(); return; }
   const out = $('#calcOut'); if (!out) return;
   out.innerHTML = calcOutHTML();
   const el = $('#pNum');
@@ -2732,6 +2737,7 @@ function fitCity() {
 }
 /* ═════════ RENDER ═════════ */
 function render() {
+  if (DM_PAGE) { dmRender(); return; }
   const pages = { home: pageHome, list: pageList, service: pageService, object: pageObject, about: pageAbout, promotions: pagePromotions, contacts: pageContacts, partnership: pagePartnership };
   document.getElementById('app').innerHTML = headerHTML() + `<main id="main">${(pages[PAGE] || pageHome)()}</main>` + footerHTML() + overlaysHTML();
   renderCalc(); renderFaq(); renderLive(); updateFab(); applyJsonLd(); wireDynamic(); initWipe();
@@ -2779,7 +2785,7 @@ function applyPreset(p) {
 const CARRY = 'sg-calc';
 let CARRIED = null; // the answers this page was opened with, as they were stored
 const carryPut = (raw) => { try { sessionStorage.setItem(CARRY, raw); } catch (e) { /* no storage: the page opens with its defaults */ } };
-const typeTarget = (t) => (P() && SVCS.private[t] && !(PAGE === 'service' && SVC_ID === t) ? svcHref(t, 'private') : null);
+const typeTarget = (t) => (!DM_PAGE && P() && SVCS.private[t] && !(PAGE === 'service' && SVC_ID === t) ? svcHref(t, 'private') : null);
 function goType(t, extra = {}, query = '') {
   const to = typeTarget(t); if (!to) return false;
   track('calc_type', { type: t });
@@ -2815,6 +2821,7 @@ function restoreCalc() {
 // Every object in the calculator has its own page: choosing one opens it, with what the visitor has set by hand —
 // the area and the visits a week from the business home, the schedule from the pages with cleaners and hours
 function objTarget(obj) {
+  if (DM_PAGE) return null;
   if (obj === 'windows') return PAGE === 'service' && SVC_ID === 'windows' ? null : svcHref('windows', 'business');
   const id = OBJ_PAGE[obj];
   if (!id || (PAGE === 'object' && PAGE_OBJ.calc.obj === obj) || (obj === 'apartments' && PAGE === 'service' && SVC_ID === 'airbnb')) return null;

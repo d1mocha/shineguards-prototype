@@ -144,6 +144,9 @@ GLOBAL = {
     'partnership': ('Партнерство',
                     'Партнерська програма Shine Guards для рієлторів, керуючих компаній, агенцій і блогерів: рекомендуйте клінінг і отримуйте винагороду за кожне замовлення.'),
 }
+# the managers' calculator (owner, 2026-10-19): one internal page in Ukrainian — never linked from the site, never indexed,
+# not translated; assets/dm.js draws it with the site's own prices
+MANAGER = ('ua/manager', ('Калькулятор менеджера', 'Внутрішній калькулятор Shine Guards для менеджерів: ціни сайту, коригування й текст для клієнта.'))
 
 
 def seo_keys():
@@ -277,7 +280,7 @@ def build_id():
     global _BUILD
     if _BUILD is None:
         h = hashlib.sha1()
-        for name in ('data.js', 'site.js', 'site.css') + tuple(f'i18n/{lang}.js' for lang in LANGS[1:]):
+        for name in ('data.js', 'site.js', 'site.css', 'dm.js') + tuple(f'i18n/{lang}.js' for lang in LANGS[1:]):
             with open(os.path.join(HERE, 'assets', *name.split('/')), 'rb') as f:
                 h.update(f.read())
         _BUILD = h.hexdigest()[:10]
@@ -311,7 +314,7 @@ TEMPLATE = '''<!DOCTYPE html>
 <body>
 <div id="app"><noscript><h1>{h1}</h1><p>{desc}</p></noscript></div>
 {i18n}<script src="{root}assets/data.js?v={build}"></script>
-<script src="{root}assets/site.js?v={build}"></script>
+{dm_js}<script src="{root}assets/site.js?v={build}"></script>
 </body>
 </html>
 '''
@@ -322,14 +325,15 @@ def write(out_root, rel_dir, alts, *, seo, page, lang, kind='', svc='', city='',
     depth = len([p for p in rel_dir.split('/') if p])
     root = '../' * depth or './'
     canonical = f'{BASE}/{rel_dir}'
-    alternates = '\n'.join(f'<link rel="alternate" hreflang="{HTML_LANG[l]}" href="{BASE}/{alts[l]}" />' for l in LANGS)
-    alternates += f'\n<link rel="alternate" hreflang="x-default" href="{BASE}/{alts["en"]}" />'
+    alternates = '\n'.join(f'<link rel="alternate" hreflang="{HTML_LANG[l]}" href="{BASE}/{alts[l]}" />' for l in LANGS) if alts else ''
+    alternates += f'\n<link rel="alternate" hreflang="x-default" href="{BASE}/{alts["en"]}" />' if alts else ''
     out = TEMPLATE.format(
         html_lang=HTML_LANG[lang], og_locale=OG_LOCALE[lang], lang=lang, langs=','.join(READY),
         title=html.escape(title), desc=html.escape(desc), canonical=canonical, alternates=alternates,
         robots='<meta name="robots" content="noindex, nofollow" />\n' if noindex else '', og_image=OG_IMAGE,
         root=root, page=page, kind=kind, svc=svc, city=city, h1=html.escape(title.split(' | ')[0]), build=build_id(),
         i18n='' if lang == 'ua' else f'<script src="{root}assets/i18n/{lang}.js?v={build_id()}"></script>\n',
+        dm_js=f'<script src="{root}assets/dm.js?v={build_id()}"></script>\n' if page == 'manager' else '',
     )
     path = os.path.join(out_root, *rel_dir.split('/'), 'index.html')
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -426,6 +430,10 @@ def build_single(path, pages):
         f.write(out)
 
 
+def write_manager(out_root):
+    write(out_root, MANAGER[0], None, seo=MANAGER[1], page='manager', lang='ua', noindex=True)
+
+
 def main():
     if '--keys' in sys.argv:
         sys.stdout.write(json.dumps(seo_keys(), ensure_ascii=False))
@@ -438,6 +446,7 @@ def main():
         site = os.path.join(out_root, 'site')
         for rel, meta, alts in pages:
             write(site, rel, alts, noindex=True, **meta)
+        write_manager(site)
         write_entry(site, dev=False)
         shutil.copytree(os.path.join(HERE, 'assets'), os.path.join(site, 'assets'),
                         ignore=shutil.ignore_patterns('*.json'))
@@ -453,6 +462,7 @@ def main():
         shutil.rmtree(os.path.join(HERE, d), ignore_errors=True)
     for rel, meta, alts in pages:
         write(HERE, rel, alts, **meta)
+    write_manager(HERE)
     write_entry(HERE, dev=True)
     print(f'{len(pages)} pages ({len(pages) // len(LANGS)} × {len(LANGS)} languages) + index.html')
 
