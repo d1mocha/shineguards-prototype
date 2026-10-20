@@ -1623,6 +1623,7 @@ a.faq-all { display: inline-block; text-decoration: none; text-align: center; }
 .cs-view { position: relative; }
 .cs-gal .tg-track { aspect-ratio: 4 / 5; border-radius: 22px; background: #DCE6F0; }
 .cs-gal .tg-s.photo .tg-cap { left: 14px; top: 14px; padding: 6px 12px; font-size: 13.5px; }
+.cs-gal .ba-tag.b { top: auto; bottom: 14px; } /* a «before | after» photo: the labels under each half */
 .cs-arr { position: absolute; top: 50%; width: 42px; height: 42px; margin-top: -21px; display: grid; place-items: center; padding: 0 0 3px; border: 0; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--blue); font: 400 28px/1 Inter, sans-serif; box-shadow: 0 10px 22px -12px rgba(2,16,36,.55); cursor: pointer; transition: transform .15s; }
 .cs-arr:hover { transform: scale(1.06); }
 .cs-arr.l { left: 12px; }

@@ -2233,7 +2233,7 @@ function pageService() {
     const cal = !requestOnly; // a page with a calculator sends back to it, a request-only page opens the form
     return hero + sec('incl', s.inclTitle, s.inclSub, inclGroups(s.inclOwn) + info)
       + sec('org', s.uspTitle, '', `<div class="principles when${s.usp.length === 3 ? ' c3' : ''}">${s.usp.map(([icn, t, x], i) => `<div class="pr pop" style="--i:${i}">${ic(icn)}<h3>${t}</h3><p>${x}</p></div>`).join('')}</div>${s.uspNote ? `<div class="incl-info reveal">${ic('clock')}<p>${s.uspNote}</p></div>` : ''}`)
-      + (s.caseKey ? caseSec(s.caseKey) : '') // a real case of this service told on another page (Lululemon: after the renovation → every day)
+      + (s.caseKey ? caseSec(s.caseKey, true) : '') // real cases of this service told on other pages (Lululemon, HOMIE: after the renovation → every day)
       + aboutSec(null, s.advSwap ? { adv: ADV_BIZ.map((a, i) => (i === s.advSwap[0] ? s.advSwap[1] : a)) } : {}) + stepsSec(s.steps, tl('Як ми це робимо')) + proofSec() + promoBannerHTML() + faqSec(objFaq(s), s.faqTitle, true)
       + `<section class="block" id="start"><div class="container"><div class="final-cta reveal"><div><h2>${s.final[0]}</h2><p>${s.final[1]}</p></div>
           <div class="fc-btns">${cal ? `<button type="button" class="fc-btn home" data-tocalc>${CALC_SVG}${s.final[2]}</button>` : `<button type="button" class="fc-btn home" data-open="book" data-bizgoal="${tl(`Комерційна пропозиція`)}">${s.final[2]}</button>`}<a class="fc-btn biz" href="${waHref(s.waText)}" target="_blank" rel="noopener">${SOC.wa}${tl(`Надіслати фото`)}</a></div></div></div></section>`
@@ -2309,7 +2309,8 @@ function demoCase(id) {
     result: tl('Результат у фактах: що змінилося для клієнта, цифри, терміни.'),
     quote: [tl('Відгук клієнта — одне-два речення своїми словами.'), tl('Імʼя, посада')] };
 }
-const casesFor = (id) => (CASES[id] && CASES[id].length ? CASES[id] : params.get('demo') === 'cases' ? [demoCase(id)] : []);
+// a page may tell the cases of several object types (business post-renovation: Lululemon and HOMIE) — a list of keys
+const casesFor = (id) => (Array.isArray(id) ? id.flatMap((k) => CASES[k] || []) : CASES[id] && CASES[id].length ? CASES[id] : params.get('demo') === 'cases' ? [demoCase(id)] : []);
 // before / after: one photo over the other, the divider follows a range input (mouse, touch and keyboard)
 function beforeAfterHTML(before, after) {
   const side = (cls, img, alt, label, icn) => img ? `<div class="${cls}"><img loading="lazy" alt="${alt}" src="${img}" /></div>` : `<div class="${cls} ph">${ic(icn)}<span>${label}</span></div>`;
@@ -2329,9 +2330,14 @@ function caseStageGo(k) {
   $$('[data-cstage]').forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.cstage === k)));
   const t = $('#caseStage'); if (t) t.innerHTML = caseStageT(c.stages[k]);
 }
+// a «before | after» photo (the two frames side by side, `ba` in the fifth place) carries the two labels; on a service
+// page that tells the case for its renovation story (CASE_BA_FIRST) these photos open the gallery
+let CASE_BA_FIRST = false;
 function caseGalleryHTML(g) {
+  if (CASE_BA_FIRST) g = [...g.filter((x) => x[4] === 'ba'), ...g.filter((x) => x[4] !== 'ba')];
   const pic = ([file, alt, , pos], lazy) => `<img ${lazy ? 'loading="lazy" ' : ''}alt="${alt}" src="${teamSrc({ file })}" style="object-position:${pos || '50% 50%'}" />`;
-  return `<div class="cs-gal" data-gal><div class="cs-view"><div class="tg-track">${g.map((x, k) => `<figure class="tg-s photo">${pic(x, k > 0)}${x[2] ? `<figcaption class="tg-cap">${x[2]}</figcaption>` : ''}</figure>`).join('')}</div>
+  const ba = (x) => (x[4] === 'ba' ? `<span class="ba-tag l b">${tl(`До`)}</span><span class="ba-tag r b">${tl(`Після`)}</span>` : '');
+  return `<div class="cs-gal" data-gal><div class="cs-view"><div class="tg-track">${g.map((x, k) => `<figure class="tg-s photo">${pic(x, k > 0)}${x[2] ? `<figcaption class="tg-cap">${x[2]}</figcaption>` : ''}${ba(x)}</figure>`).join('')}</div>
       <button type="button" class="cs-arr l" data-galnav="-1" aria-label="${tl(`Попереднє фото`)}">‹</button><button type="button" class="cs-arr r" data-galnav="1" aria-label="${tl(`Наступне фото`)}">›</button>
       <span class="cs-count" aria-hidden="true"><b>1</b> / ${g.length}</span></div>
     <div class="cs-thumbs">${g.map((x, k) => `<button type="button" data-cthumb="${k}" aria-current="${k === 0}" aria-label="${x[2] || x[1]}">${pic([x[0], '', '', x[3]], true)}</button>`).join('')}</div></div>`;
@@ -2362,8 +2368,8 @@ function caseHTML(c) {
     </div></article>`;
 }
 let CASE_KEY = null; // the CASES key the page shows: its own object, or another page's case (business post-renovation → shops)
-function caseSec(id) {
-  CASE_KEY = id;
+function caseSec(id, baFirst = false) {
+  CASE_KEY = id; CASE_BA_FIRST = baFirst;
   const list = casesFor(id); if (!list.length) return '';
   const i = Math.min(state.caseIdx, list.length - 1);
   // several cases of one object type: chips with the clients' names switch the card
